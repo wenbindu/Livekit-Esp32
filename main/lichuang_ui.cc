@@ -515,21 +515,6 @@ extern "C" esp_err_t lichuang_ui_init(void)
 
 extern "C" esp_err_t lichuang_ui_suspend(void)
 {
-    if (!s_ui.initialized) {
-        return ESP_OK;
-    }
-
-    if (lock_ui()) {
-        stop_animation_locked();
-        unlock_ui();
-    }
-
-    esp_err_t stop_err = lvgl_port_stop();
-    if (stop_err != ESP_OK && stop_err != ESP_ERR_INVALID_STATE) {
-        return stop_err;
-    }
-    vTaskDelay(pdMS_TO_TICKS(40));
-    ESP_LOGI(TAG, "Lichuang LVGL UI suspended");
     return ESP_OK;
 }
 
@@ -538,18 +523,6 @@ extern "C" esp_err_t lichuang_ui_resume(void)
     if (!s_ui.initialized) {
         return lichuang_ui_init();
     }
-
-    esp_err_t err = lvgl_port_resume();
-    if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
-        return err;
-    }
-
-    if (lock_ui()) {
-        apply_cached_message_locked();
-        unlock_ui();
-    }
-
-    ESP_LOGI(TAG, "Lichuang LVGL UI resumed");
     return ESP_OK;
 }
 

@@ -275,11 +275,8 @@ static void app_task(void *arg)
 #endif
 
     lichuang_ui_show_message("LIVEKIT", "PREPARING AUDIO", "JOINING ROOM", ":)");
-    ESP_ERROR_CHECK_WITHOUT_ABORT(lichuang_ui_suspend());
-    vTaskDelay(pdMS_TO_TICKS(80));
     bool join_started = livekit_app_join_room();
     if (!join_started) {
-        ESP_ERROR_CHECK_WITHOUT_ABORT(lichuang_ui_resume());
         lichuang_ui_show_message("LIVEKIT", "ROOM START FAILED", "CHECK SERIAL LOG", ":(");
     }
 
