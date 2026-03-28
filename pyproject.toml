@@ -1,0 +1,11 @@
+[project]
+name = "livekit-esp32s3-tools"
+version = "0.1.0"
+description = "Local tooling for the livekit-esp32s3 project"
+requires-python = ">=3.11"
+dependencies = [
+  "websockets>=14,<16",
+]
+
+[tool.uv]
+package = false

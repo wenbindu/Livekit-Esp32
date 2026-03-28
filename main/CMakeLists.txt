@@ -1,0 +1,41 @@
+idf_component_register(
+    SRCS
+        "app_main.c"
+        "lichuang_audio_board.c"
+        "lichuang_ui.cc"
+        "livekit_app.c"
+        "livekit_debug_audio.c"
+        "livekit_media.c"
+        "wifi_connect.cc"
+    INCLUDE_DIRS
+        "."
+    PRIV_REQUIRES
+        78__esp-wifi-connect
+        78__xiaozhi-fonts
+        driver
+        espressif__esp_audio_codec
+        espressif__esp_capture
+        espressif__esp_codec_dev
+        espressif__esp_lvgl_port
+        esp_event
+        esp_http_client
+        esp_http_server
+        esp_lcd
+        esp_netif
+        esp_timer
+        esp-tls
+        esp_wifi
+        json
+        spiffs
+        espressif__esp_muxer
+        espressif__esp_websocket_client
+        livekit__livekit
+        livekit__sandbox_token
+        lvgl__lvgl
+        mbedtls
+        nvs_flash
+        tempotian__av_render
+        tempotian__media_lib_sal
+)
+
+target_compile_definitions(${COMPONENT_LIB} PUBLIC LV_LVGL_H_INCLUDE_SIMPLE)

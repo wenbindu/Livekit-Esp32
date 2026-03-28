@@ -1,0 +1,312 @@
+menu "LiveKit ESP32-S3 Configuration"
+
+choice LK_EXAMPLE_AUTH_METHOD
+    prompt "LiveKit credentials mode"
+    default LK_EXAMPLE_USE_TOKEN_SERVER
+
+    config LK_EXAMPLE_USE_SANDBOX
+        bool "LiveKit Cloud Sandbox"
+
+    config LK_EXAMPLE_USE_DEVICE_JWT
+        bool "Device-generated JWT"
+
+    config LK_EXAMPLE_USE_TOKEN_SERVER
+        bool "Token server"
+
+    config LK_EXAMPLE_USE_PREGENERATED
+        bool "Static token"
+endchoice
+
+config LK_EXAMPLE_SANDBOX_ID
+    string "Sandbox ID"
+    depends on LK_EXAMPLE_USE_SANDBOX
+    default ""
+
+config LK_EXAMPLE_SERVER_URL
+    string "LiveKit server URL"
+    depends on LK_EXAMPLE_USE_PREGENERATED || LK_EXAMPLE_USE_DEVICE_JWT
+    default ""
+
+config LK_EXAMPLE_TOKEN
+    string "LiveKit access token"
+    depends on LK_EXAMPLE_USE_PREGENERATED
+    default ""
+
+config LK_EXAMPLE_API_KEY
+    string "LiveKit API key"
+    depends on LK_EXAMPLE_USE_DEVICE_JWT
+    default ""
+
+config LK_EXAMPLE_API_SECRET
+    string "LiveKit API secret"
+    depends on LK_EXAMPLE_USE_DEVICE_JWT
+    default ""
+
+config LK_EXAMPLE_DEVICE_JWT_TTL_SECONDS
+    int "Device JWT TTL (seconds)"
+    depends on LK_EXAMPLE_USE_DEVICE_JWT
+    range 60 86400
+    default 3600
+
+config LK_EXAMPLE_TOKEN_SERVER_URL
+    string "Token server URL"
+    depends on LK_EXAMPLE_USE_TOKEN_SERVER
+    default ""
+
+config LK_EXAMPLE_TOKEN_SERVER_TIMEOUT_MS
+    int "Token server timeout (ms)"
+    depends on LK_EXAMPLE_USE_TOKEN_SERVER
+    range 1000 30000
+    default 5000
+
+config LK_EXAMPLE_ROOM_NAME
+    string "Room name"
+    default "lichuang-room"
+
+config LK_EXAMPLE_PARTICIPANT_NAME
+    string "Participant name"
+    default "lichuang-esp32s3"
+
+config LK_EXAMPLE_PARTICIPANT_IDENTITY
+    string "Participant identity"
+    default ""
+
+config LK_EXAMPLE_PARTICIPANT_METADATA
+    string "Participant metadata"
+    default ""
+
+config LK_EXAMPLE_AGENT_NAME
+    string "LiveKit agent name"
+    default ""
+
+config LK_EXAMPLE_AGENT_METADATA
+    string "LiveKit agent metadata"
+    default ""
+
+config LK_EXAMPLE_LIVEKIT_FORCE_RELAY
+    bool "Force relay-only ICE for LiveKit"
+    default n
+
+config LK_EXAMPLE_LIVEKIT_AGENT_RECV_TIMEOUT_MS
+    int "ICE agent receive timeout (ms)"
+    range 100 5000
+    default 3000
+
+config LK_EXAMPLE_LIVEKIT_NO_AUTO_RECONNECT
+    bool "Disable esp_peer auto reconnect"
+    default y
+
+config LK_EXAMPLE_LIVEKIT_KEEP_ROLE
+    bool "Keep ICE role across reconnects"
+    default y
+
+config LK_EXAMPLE_LIVEKIT_IPV6_SUPPORT
+    bool "Enable IPv6 ICE candidates"
+    default n
+
+config LK_EXAMPLE_LIVEKIT_MAX_CANDIDATES
+    int "Maximum local ICE candidates"
+    range 1 16
+    default 6
+
+config LK_EXAMPLE_LIVEKIT_ALIVE_BINDING_RETRIES
+    int "Peer keepalive binding retries"
+    range 1 255
+    default 10
+
+config LK_EXAMPLE_LIVEKIT_PUBLISHER_DATA_CHANNEL
+    bool "Enable publisher data channel"
+    default y
+
+config LK_EXAMPLE_LIVEKIT_SUBSCRIBER_DATA_CHANNEL
+    bool "Enable subscriber data channel"
+    default n
+
+config LK_EXAMPLE_LIVEKIT_ICE_USE_LITE_MODE
+    bool "Enable ICE lite mode"
+    default n
+
+config LK_EXAMPLE_USE_WIFI
+    bool "Connect over Wi-Fi"
+    default y
+
+choice LK_EXAMPLE_WIFI_SETUP_MODE
+    prompt "Wi-Fi setup mode"
+    depends on LK_EXAMPLE_USE_WIFI
+    default LK_EXAMPLE_WIFI_SETUP_PROVISIONING
+
+    config LK_EXAMPLE_WIFI_SETUP_FIXED
+        bool "Fixed Wi-Fi credentials"
+
+    config LK_EXAMPLE_WIFI_SETUP_PROVISIONING
+        bool "Provisioning portal"
+endchoice
+
+config LK_EXAMPLE_WIFI_SSID
+    string "Wi-Fi SSID"
+    depends on LK_EXAMPLE_USE_WIFI && LK_EXAMPLE_WIFI_SETUP_FIXED
+    default ""
+
+config LK_EXAMPLE_WIFI_PASSWORD
+    string "Wi-Fi password"
+    depends on LK_EXAMPLE_USE_WIFI && LK_EXAMPLE_WIFI_SETUP_FIXED
+    default ""
+
+config LK_EXAMPLE_WIFI_AP_SSID_PREFIX
+    string "Provisioning AP SSID prefix"
+    depends on LK_EXAMPLE_USE_WIFI && LK_EXAMPLE_WIFI_SETUP_PROVISIONING
+    default "LK-Lichuang"
+
+config LK_EXAMPLE_WIFI_AP_LANGUAGE
+    string "Provisioning page language"
+    depends on LK_EXAMPLE_USE_WIFI && LK_EXAMPLE_WIFI_SETUP_PROVISIONING
+    default "en-US"
+
+config LK_EXAMPLE_WIFI_PROVISIONING_FORCE_AP
+    bool "Always start provisioning AP on boot"
+    depends on LK_EXAMPLE_USE_WIFI && LK_EXAMPLE_WIFI_SETUP_PROVISIONING
+    default n
+
+config LK_EXAMPLE_WIFI_PROVISIONING_REBOOT_ON_SUCCESS
+    bool "Reboot after provisioning success"
+    depends on LK_EXAMPLE_USE_WIFI && LK_EXAMPLE_WIFI_SETUP_PROVISIONING
+    default y
+
+config LK_EXAMPLE_AUDIO_USE_AEC
+    bool "Enable device-side AEC capture"
+    default y
+
+config LK_EXAMPLE_AUDIO_MIC_CHANNEL
+    int "Microphone input channel"
+    range 0 3
+    default 0
+
+config LK_EXAMPLE_AUDIO_REF_CHANNEL
+    int "Reference input channel"
+    depends on LK_EXAMPLE_AUDIO_USE_AEC
+    range 0 3
+    default 1
+
+config LK_EXAMPLE_AUDIO_INPUT_GAIN_DB
+    int "Microphone analog gain (dB)"
+    range 0 37
+    default 30
+
+config LK_EXAMPLE_SPEAKER_VOLUME
+    int "Speaker volume"
+    range 0 100
+    default 80
+
+config LK_EXAMPLE_AUDIO_DATA_ON_VAD
+    bool "Gate AEC capture on local VAD"
+    depends on LK_EXAMPLE_AUDIO_USE_AEC
+    default n
+
+config LK_EXAMPLE_AUDIO_AFE_HIGH_PERF
+    bool "Use high-performance voice-call AFE profile"
+    depends on LK_EXAMPLE_AUDIO_USE_AEC
+    default y
+
+config LK_EXAMPLE_AUDIO_AFE_USE_NS
+    bool "Enable AFE noise suppression when NS model is available"
+    depends on LK_EXAMPLE_AUDIO_USE_AEC
+    default y
+
+config LK_EXAMPLE_AUDIO_AFE_PSRAM
+    bool "Prefer PSRAM for AFE working memory"
+    depends on LK_EXAMPLE_AUDIO_USE_AEC && SPIRAM
+    default y
+
+config LK_EXAMPLE_AUDIO_RENDER_RAW_FIFO_KB
+    int "Audio decoder FIFO size (KiB)"
+    range 4 64
+    default 16
+
+config LK_EXAMPLE_AUDIO_RENDER_FIFO_KB
+    int "Audio render FIFO size (KiB)"
+    range 8 128
+    default 24
+
+config LK_EXAMPLE_UI_BUFFER_LINES
+    int "LVGL draw buffer height (lines)"
+    range 4 40
+    default 12
+
+config LK_EXAMPLE_UI_TRANSFER_LINES
+    int "LVGL transfer buffer height (lines)"
+    range 2 20
+    default 6
+
+config LK_EXAMPLE_UI_USE_PSRAM_BUFFER
+    bool "Store LVGL draw buffer in PSRAM"
+    depends on SPIRAM
+    default n
+
+config LK_EXAMPLE_UI_LVGL_TASK_STACK
+    int "LVGL task stack size"
+    range 3072 8192
+    default 4096
+
+config LK_EXAMPLE_TIME_SYNC_WAIT_MS
+    int "Foreground time sync wait (ms)"
+    range 0 10000
+    default 1200
+
+config LK_EXAMPLE_START_IN_STANDBY
+    bool "Boot into standby and wait for BOOT button before joining room"
+    default n
+
+config LK_EXAMPLE_DEBUG_UPLINK_WAV
+    bool "Record processed uplink audio to WAV"
+    default n
+
+config LK_EXAMPLE_DEBUG_UPLINK_RECORD_SECONDS
+    int "Processed uplink WAV duration (seconds)"
+    depends on LK_EXAMPLE_DEBUG_UPLINK_WAV
+    range 3 120
+    default 30
+
+config LK_EXAMPLE_DEBUG_HTTP_PORT
+    int "Debug HTTP server port"
+    depends on LK_EXAMPLE_DEBUG_UPLINK_WAV
+    range 1 65535
+    default 8080
+
+config LK_EXAMPLE_DEBUG_UPLINK_WS
+    bool "Stream processed uplink audio to local WebSocket"
+    depends on !LK_EXAMPLE_DEBUG_UPLINK_WAV
+    default n
+
+config LK_EXAMPLE_DEBUG_DOWNLINK_WS
+    bool "Stream rendered downlink audio to local WebSocket"
+    depends on !LK_EXAMPLE_DEBUG_UPLINK_WAV
+    default n
+
+config LK_EXAMPLE_DEBUG_UPLINK_WS_URL
+    string "Debug uplink WebSocket URL"
+    depends on LK_EXAMPLE_DEBUG_UPLINK_WS
+    default ""
+
+config LK_EXAMPLE_DEBUG_DOWNLINK_WS_URL
+    string "Debug downlink WebSocket URL"
+    depends on LK_EXAMPLE_DEBUG_DOWNLINK_WS
+    default ""
+
+config LK_EXAMPLE_DEBUG_DOWNLINK_RINGBUF_KB
+    int "Debug downlink ring buffer size (KiB)"
+    depends on LK_EXAMPLE_DEBUG_DOWNLINK_WS
+    range 8 128
+    default 24
+
+config LK_EXAMPLE_DEBUG_UPLINK_WS_RECONNECT_MS
+    int "Debug uplink WebSocket reconnect delay (ms)"
+    depends on LK_EXAMPLE_DEBUG_UPLINK_WS || LK_EXAMPLE_DEBUG_DOWNLINK_WS
+    range 500 30000
+    default 3000
+
+config LK_EXAMPLE_LOCAL_AUDIO_UPLINK_ONLY
+    bool "Run local audio uplink only (skip LiveKit room join)"
+    depends on LK_EXAMPLE_DEBUG_UPLINK_WS
+    default n
+
+endmenu
