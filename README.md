@@ -1,105 +1,172 @@
 # livekit-esp32s3
 
-`livekit-esp32s3` is a self-contained ESP-IDF project for the `lichuang_esp32s3` board. It keeps the Lichuang-specific audio, Wi-Fi provisioning, and display pipeline, while cleaning up the structure so the project can be published as a standalone open-source repository.
+English | [简体中文](README.zh-CN.md)
 
-## What Is Included
+`livekit-esp32s3` is a standalone ESP-IDF project for the `lichuang_esp32s3` board. It keeps the Lichuang-specific audio, Wi-Fi provisioning, and LCD pipeline, while restructuring the original prototype into an open-source-friendly repository.
 
-- `main/`: board app, media pipeline, UI, Wi-Fi provisioning, LiveKit integration
-- `components/78__esp-wifi-connect`: local copy of the provisioning portal component
-- `components/78__xiaozhi-fonts`: local copy of the display font/emoji assets
-- `configs/`: board defaults, dev/prod profile overlays, local config example
-- `configs/scenarios/`: use-case overlays for packaged firmware variants
+## What This Project Does
+
+- connects an ESP32-S3 device to a LiveKit room
+- captures microphone audio and publishes it as Opus
+- subscribes to remote audio and renders it on the onboard speaker
+- provides a lightweight Wi-Fi provisioning portal
+- keeps Lichuang board support, display UI, and voice-processing path in one repo
+
+## Repository Layout
+
+- `main/`: firmware app, board glue, LiveKit integration, UI, Wi-Fi flow
+- `components/78__esp-wifi-connect`: vendored provisioning portal component
+- `components/78__xiaozhi-fonts`: vendored font and emoji assets
+- `configs/`: board/profile defaults plus the local config example
+- `configs/scenarios/`: scenario overlays such as `dev-chat`, `debug-jwt`, and `dev-audio-ws`
+- `docs/`: development and packaging notes
 - `scripts/project.sh`: configure/build/flash wrapper
-- `scripts/package_firmware.sh`: scenario-based firmware packaging helper
+- `scripts/package_firmware.sh`: package scenario-specific firmware artifacts
 - `scripts/token_server.py`: local or remote token service
-- `scripts/debug_uplink_ws_server.py`: dev-only PCM receiver for processed uplink and rendered downlink
-- `scripts/debug_audio_ws_start.sh`: start the local debug-audio receiver in the background
-- `scripts/debug_audio_ws_stop.sh`: stop the local debug-audio receiver
+- `scripts/debug_uplink_ws_server.py`: desktop receiver for debug-audio WAV capture
 
-## Why The Layout Changed
+## Open-Source Safety
 
-The previous evaluation project depended on sibling directories and parent `managed_components`. That works in a monorepo, but it is not suitable for an open-source repo. This version vendors the Lichuang-specific components it needs, keeps the firmware app self-contained, and moves secrets into an ignored local config file.
+Real credentials must stay in:
 
-## Configuration Model
+- `configs/livekit.local.env`
 
-This project does not use git branches to switch between development and production.
+That file is gitignored. The tracked file:
 
-It uses four layers instead:
+- `configs/livekit.local.env.example`
 
-1. `board` overlay: hardware-specific defaults such as flash/PSRAM target
-2. `profile` overlay: `dev` vs `prod`
-3. `scenario` overlay: use-case behavior such as `dev-chat` or `prod-standby`
-4. `local env`: secrets and machine-local endpoints in `configs/livekit.local.env`
+contains placeholders only.
 
-This is the mature pattern for embedded products because it avoids branch drift and makes builds reproducible.
+Important:
 
-## Auth Modes
+- `AUTH_MODE=token_server` is the recommended mode for development and production.
+- `AUTH_MODE=device_jwt` is development-only. It embeds `LIVEKIT_API_SECRET` into the generated firmware image.
+- Do not commit real tokens, API keys, or machine-local IPs into scenario files, Markdown docs, or tracked defaults.
 
-Supported firmware auth modes:
+## Tested Environment
 
-- `device_jwt`: dev-only fallback when the board cannot reach your token server
-- `token_server`: recommended for dev and prod
-- `sandbox`: convenient for LiveKit Cloud sandbox experiments
-- `static_token`: dev-only fallback
+This project is currently organized around:
 
-`device_jwt` requires a valid device clock because the JWT includes `nbf` and `exp`. This project syncs time over SNTP before joining the room.
+- ESP-IDF `v5.5.3`
+- target `esp32s3`
+- board `lichuang_esp32s3`
+- Python from the ESP-IDF environment
 
-The recommended model is still to keep `LIVEKIT_API_SECRET` off the device. Run `scripts/token_server.py` locally during development or deploy the same contract remotely in production.
+## Development Environment Setup
 
-## Quick Start
+### 1. Install ESP-IDF
 
-1. Copy the local config example:
+Example flow:
+
+```bash
+git clone https://github.com/espressif/esp-idf.git
+cd esp-idf
+git checkout v5.5.3
+bash install.sh
+. ./export.sh
+idf.py --version
+```
+
+Optional sanity check:
+
+```bash
+cd examples/get-started/hello_world
+idf.py build
+```
+
+### 2. Clone This Project
+
+```bash
+git clone <your-repo-url> livekit-esp32s3
+cd livekit-esp32s3
+```
+
+### 3. Create The Local Config
 
 ```bash
 cp configs/livekit.local.env.example configs/livekit.local.env
 ```
 
-2. Edit `configs/livekit.local.env`.
+Then edit `configs/livekit.local.env`.
 
-If your board cannot reach a local token server, set `AUTH_MODE=device_jwt` and provide:
+Minimum fields depend on auth mode:
 
-- `LIVEKIT_URL`
-- `LIVEKIT_API_KEY`
-- `LIVEKIT_API_SECRET`
+- `token_server`: `TOKEN_SERVER_URL`, plus the token server itself needs `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`
+- `device_jwt`: `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`
+- `sandbox`: `LIVEKIT_SANDBOX_ID`
+- `static_token`: `LIVEKIT_URL`, `LIVEKIT_TOKEN`
 
-3. Configure and build:
+### 4. Build And Flash
 
-```bash
-SCENARIO=dev-chat bash scripts/project.sh configure
-SCENARIO=dev-chat bash scripts/project.sh build
-```
-
-4. Flash:
+Normal development chat firmware:
 
 ```bash
 SCENARIO=dev-chat bash scripts/project.sh flash-monitor
 ```
 
-## Scenario Packaging
-
-List supported scenarios:
+Lower-overhead device-JWT firmware:
 
 ```bash
-bash scripts/package_firmware.sh list
+SCENARIO=debug-jwt bash scripts/project.sh flash-monitor
 ```
 
-Package a firmware drop:
+Dual-path debug-audio firmware:
 
 ```bash
-bash scripts/package_firmware.sh dev-chat
+SCENARIO=dev-audio-ws bash scripts/project.sh flash-monitor
 ```
 
-See `docs/firmware-packaging.md` for the scenario matrix and artifact layout.
+## Scenario Model
 
-## Dev Tooling
+This repo does not use separate git branches for `dev` and `prod`.
 
-Start the local token server:
+It uses four layers:
+
+1. board defaults
+2. profile defaults
+3. scenario overlay
+4. local env
+
+Useful scenarios:
+
+- `dev-chat`: default daily development firmware
+- `debug-jwt`: no debug audio WS export, device-generated JWT, lighter dev path
+- `dev-uplink-ws`: export processed uplink audio to a desktop receiver
+- `dev-audio-ws`: export both uplink and downlink audio for WAV inspection
+- `dev-uplink-only`: local uplink diagnostics without normal room chat
+- `prod-standby`: production-like standby-first behavior
+
+See:
+
+- `docs/profiles.md`
+- `docs/firmware-packaging.md`
+- `docs/debug-audio.md`
+- `docs/debug-jwt.md`
+
+## Lichuang Board Notes
+
+The repo is currently tuned for the Lichuang ESP32-S3 development board.
+
+- default board is `lichuang_esp32s3`
+- serial port is usually exposed over USB Type-C as `/dev/cu.usbmodem*` on macOS
+- target is `esp32s3`
+- the BOOT button is used for Wi-Fi provisioning entry and chat interaction
+- the current playback path is intentionally kept as app-level mono PCM for the single-speaker hardware
+- Wi-Fi provisioning is part of the firmware flow; if saved Wi-Fi fails, the board should return to provisioning mode
+
+## Token Server
+
+Recommended for normal development and production:
 
 ```bash
 python3 scripts/token_server.py --env-file configs/livekit.local.env
 ```
 
-Start the dev-only debug-audio receiver:
+If the board cannot reach your token server, use `SCENARIO=debug-jwt` temporarily.
+
+## Debug-Audio Workflow
+
+Start the desktop receiver:
 
 ```bash
 bash scripts/debug_audio_ws_start.sh
@@ -111,27 +178,32 @@ Stop it:
 bash scripts/debug_audio_ws_stop.sh
 ```
 
-Build and flash the dedicated debug-audio firmware:
+Generated WAV files are written under `debug_audio_ws/`, which is gitignored.
+
+## Packaging
+
+List supported scenarios:
 
 ```bash
-SCENARIO=dev-audio-ws bash scripts/project.sh flash-monitor
+bash scripts/package_firmware.sh list
 ```
 
-Package the same firmware as a distributable artifact:
+Package a scenario:
 
 ```bash
+bash scripts/package_firmware.sh dev-chat
+```
+
+Examples:
+
+```bash
+bash scripts/package_firmware.sh debug-jwt
 bash scripts/package_firmware.sh dev-audio-ws
 ```
 
-## Power And UX Direction
+## Practical Notes
 
-For production, the recommended baseline is:
+- LiveKit Cloud reachability still depends on the network used by the board.
+- If the web client also cannot talk to the agent, stop changing firmware first and inspect the agent logs.
+- For production deployment, prefer token-server auth and keep the API secret off the device.
 
-- boot
-- connect Wi-Fi
-- sync time
-- stay in standby
-- join room only after BOOT button press
-- return to standby after the chat session ends
-
-This removes unnecessary room connections and keeps the device lighter than always-online dev builds. See `docs/profiles.md`.

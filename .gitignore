@@ -28,5 +28,9 @@ __pycache__/
 .idea/
 .vscode/
 .envrc
+# Machine-local secrets and private config overlays.
+configs/livekit.local.env
 configs/*.local.env
+configs/*.private.env
+configs/*.secret.env
 !configs/livekit.local.env.example

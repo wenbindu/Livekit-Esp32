@@ -52,6 +52,21 @@ Detailed workflow:
 
 - `docs/debug-audio.md`
 
+### `debug-jwt`
+
+Use when you want a lighter development firmware:
+
+- `PROFILE=dev`
+- `AUTH_MODE=device_jwt`
+- no debug uplink export
+- no debug downlink export
+- immediate join flow
+- lower local debug overhead than `dev-audio-ws`
+
+Detailed workflow:
+
+- `docs/debug-jwt.md`
+
 ### `dev-uplink-only`
 
 Use when isolating microphone, AEC, AGC, and uplink processing.
@@ -75,6 +90,12 @@ Build and flash with a scenario:
 
 ```bash
 SCENARIO=dev-chat bash scripts/project.sh flash-monitor
+```
+
+Switch to lower-overhead device JWT debugging:
+
+```bash
+SCENARIO=debug-jwt bash scripts/project.sh flash-monitor
 ```
 
 Switch to processed uplink debugging:
@@ -121,6 +142,12 @@ Produce a distributable firmware folder:
 bash scripts/package_firmware.sh dev-chat
 ```
 
+Example lighter device-JWT debug package:
+
+```bash
+bash scripts/package_firmware.sh debug-jwt
+```
+
 Example debug-audio package:
 
 ```bash
@@ -164,6 +191,12 @@ The ignored local env can safely keep:
 - `TOKEN_SERVER_URL`
 - `DEBUG_UPLINK_WS_URL`
 - `DEBUG_DOWNLINK_WS_URL`
+
+`debug-jwt` expects these local secrets to be present:
+
+- `LIVEKIT_URL`
+- `LIVEKIT_API_KEY`
+- `LIVEKIT_API_SECRET`
 
 Use `AUTH_MODE=device_jwt` only when the board cannot reach your token server and you accept embedding the secret into the dev firmware.
 

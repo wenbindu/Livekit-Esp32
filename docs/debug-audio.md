@@ -143,16 +143,11 @@ SCENARIO=dev-audio-ws bash scripts/project.sh monitor
 
 Healthy startup should include:
 
-- `Streaming uplink PCM to ws://.../uplink`
-- `Streaming downlink PCM to ws://.../downlink`
-- `Debug uplink websocket connected`
-- `Debug downlink websocket connected`
 - `AUD_SRC: Start to fetch audio src data now`
-- `Published audio frame: count=...`
-- `Debug uplink ws frames=...`
-- `Debug downlink ws frames=...`
+- `Room state changed: Connected`
+- `I2S_RENDER: open channel:1 sample_rate:16000 bits:16`
 
-If those appear, both capture directions are live.
+If the room is connected and your receiver is writing non-empty WAV files for both `uplink` and `downlink`, both capture directions are live.
 
 ## Output Files
 
@@ -258,6 +253,11 @@ Check:
 - if you change the port, update `DEBUG_UPLINK_WS_URL` and `DEBUG_DOWNLINK_WS_URL` to match before flashing
 
 ## Related Docs
+
+- `README.md`
+- `README.zh-CN.md`
+- `docs/debug-jwt.md`
+- `docs/firmware-packaging.md`
 
 - `docs/firmware-packaging.md`
 - `docs/profiles.md`
