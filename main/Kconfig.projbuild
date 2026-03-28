@@ -59,6 +59,18 @@ config LK_EXAMPLE_TOKEN_SERVER_TIMEOUT_MS
     range 1000 30000
     default 5000
 
+config LK_EXAMPLE_TOKEN_SERVER_RETRY_DELAY_MS
+    int "Token server retry delay (ms)"
+    depends on LK_EXAMPLE_USE_TOKEN_SERVER
+    range 1000 60000
+    default 3000
+
+config LK_EXAMPLE_TOKEN_SERVER_AUTH_MAX_FAILURES
+    int "Max token auth failures before auth expired"
+    depends on LK_EXAMPLE_USE_TOKEN_SERVER
+    range 1 10
+    default 3
+
 config LK_EXAMPLE_ROOM_NAME
     string "Room name"
     default "lichuang-room"

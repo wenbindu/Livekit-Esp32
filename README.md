@@ -18,7 +18,7 @@ English | [简体中文](README.zh-CN.md)
 - `components/78__esp-wifi-connect`: vendored provisioning portal component
 - `components/78__xiaozhi-fonts`: vendored font and emoji assets
 - `configs/`: board/profile defaults plus the local config example
-- `configs/scenarios/`: scenario overlays such as `dev-chat`, `debug-jwt`, and `dev-audio-ws`
+- `configs/scenarios/`: scenario overlays such as `dev-chat`, `debug-jwt`, `dev-audio-ws`, and `release-token`
 - `docs/`: development and packaging notes
 - `scripts/project.sh`: configure/build/flash wrapper
 - `scripts/package_firmware.sh`: package scenario-specific firmware artifacts
@@ -96,6 +96,11 @@ Minimum fields depend on auth mode:
 - `sandbox`: `LIVEKIT_SANDBOX_ID`
 - `static_token`: `LIVEKIT_URL`, `LIVEKIT_TOKEN`
 
+Useful token-server knobs:
+
+- `TOKEN_SERVER_RETRY_DELAY_MS`
+- `TOKEN_SERVER_AUTH_MAX_FAILURES`
+
 ### 4. Build And Flash
 
 Normal development chat firmware:
@@ -114,6 +119,12 @@ Dual-path debug-audio firmware:
 
 ```bash
 SCENARIO=dev-audio-ws bash scripts/project.sh flash-monitor
+```
+
+Release token-server firmware:
+
+```bash
+SCENARIO=release-token bash scripts/project.sh flash-monitor
 ```
 
 ## Scenario Model
@@ -135,6 +146,7 @@ Useful scenarios:
 - `dev-audio-ws`: export both uplink and downlink audio for WAV inspection
 - `dev-uplink-only`: local uplink diagnostics without normal room chat
 - `prod-standby`: production-like standby-first behavior
+- `release-token`: release firmware with server-side JWT signing and device-side token refresh
 
 See:
 
@@ -142,6 +154,7 @@ See:
 - `docs/firmware-packaging.md`
 - `docs/debug-audio.md`
 - `docs/debug-jwt.md`
+- `docs/release-token.md`
 
 ## Lichuang Board Notes
 
@@ -161,6 +174,10 @@ Recommended for normal development and production:
 ```bash
 python3 scripts/token_server.py --env-file configs/livekit.local.env
 ```
+
+For the release firmware flow that refreshes token-server JWTs and shows `AUTH EXPIRED` after repeated auth failures, see:
+
+- `docs/release-token.md`
 
 If the board cannot reach your token server, use `SCENARIO=debug-jwt` temporarily.
 
@@ -199,6 +216,7 @@ Examples:
 ```bash
 bash scripts/package_firmware.sh debug-jwt
 bash scripts/package_firmware.sh dev-audio-ws
+bash scripts/package_firmware.sh release-token
 ```
 
 ## Practical Notes
@@ -206,4 +224,3 @@ bash scripts/package_firmware.sh dev-audio-ws
 - LiveKit Cloud reachability still depends on the network used by the board.
 - If the web client also cannot talk to the agent, stop changing firmware first and inspect the agent logs.
 - For production deployment, prefer token-server auth and keep the API secret off the device.
-

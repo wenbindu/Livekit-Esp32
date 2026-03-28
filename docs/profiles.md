@@ -63,17 +63,19 @@ Recommended toggles:
 Recommended scenario:
 
 - `prod-standby`
+- `release-token`
 
 ## Standby Flow
 
 Current practical recommendation:
 
 1. Boot device
-2. Connect Wi-Fi and sync time
+2. Connect Wi-Fi
 3. Stay in standby screen
 4. Wait for BOOT button press
-5. Join room and start chat
-6. Leave room and return to standby
+5. Sync time and initialize audio
+6. Join room and start chat
+7. Leave room and return to standby
 
 This is lighter and less error-prone than immediately connecting to a room after every reboot.
 

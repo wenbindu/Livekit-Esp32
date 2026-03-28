@@ -84,6 +84,18 @@ Use for production-like packaging.
 - enter standby first
 - join only after user action
 
+### `release-token`
+
+Use for the actual release firmware that keeps LiveKit secrets off the device.
+
+- `PROFILE=prod`
+- `AUTH_MODE=token_server`
+- no debug audio export
+- enter standby first
+- fetch a fresh token from the token server before room join
+- when the token is invalid or expired, fetch a new token and retry
+- after repeated auth failures, show `AUTH EXPIRED` on the device
+
 ## Everyday Commands
 
 Build and flash with a scenario:
@@ -128,6 +140,12 @@ Build a production-like standby image:
 SCENARIO=prod-standby bash scripts/project.sh build
 ```
 
+Build the release token-server image:
+
+```bash
+SCENARIO=release-token bash scripts/project.sh build
+```
+
 ## Packaging Commands
 
 List built-in scenarios:
@@ -152,6 +170,12 @@ Example debug-audio package:
 
 ```bash
 bash scripts/package_firmware.sh dev-audio-ws
+```
+
+Example release package:
+
+```bash
+bash scripts/package_firmware.sh release-token
 ```
 
 This is the recommended way to freeze a dedicated audio-debug firmware without touching the normal chat firmware path.

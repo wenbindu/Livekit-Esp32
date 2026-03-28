@@ -38,6 +38,8 @@ Config env keys:
   AUTH_MODE=device_jwt|token_server|sandbox|static_token
   TOKEN_SERVER_URL=http://host:8790/token
   TOKEN_SERVER_TIMEOUT_MS=5000
+  TOKEN_SERVER_RETRY_DELAY_MS=3000
+  TOKEN_SERVER_AUTH_MAX_FAILURES=3
   LIVEKIT_SANDBOX_ID=bo-xxxxxx
   LIVEKIT_URL=wss://project.livekit.cloud
   LIVEKIT_API_KEY=API...
@@ -411,6 +413,8 @@ refresh_generated_defaults() {
             printf '# CONFIG_LK_EXAMPLE_USE_PREGENERATED is not set\n' >> "${generated_path}"
             printf 'CONFIG_LK_EXAMPLE_TOKEN_SERVER_URL="%s"\n' "${TOKEN_SERVER_URL}" >> "${generated_path}"
             printf 'CONFIG_LK_EXAMPLE_TOKEN_SERVER_TIMEOUT_MS=%s\n' "${TOKEN_SERVER_TIMEOUT_MS:-5000}" >> "${generated_path}"
+            printf 'CONFIG_LK_EXAMPLE_TOKEN_SERVER_RETRY_DELAY_MS=%s\n' "${TOKEN_SERVER_RETRY_DELAY_MS:-3000}" >> "${generated_path}"
+            printf 'CONFIG_LK_EXAMPLE_TOKEN_SERVER_AUTH_MAX_FAILURES=%s\n' "${TOKEN_SERVER_AUTH_MAX_FAILURES:-3}" >> "${generated_path}"
             ;;
         sandbox)
             if [[ -z "${LIVEKIT_SANDBOX_ID:-}" ]]; then

@@ -245,6 +245,10 @@ static void app_task(void *arg)
         return;
     }
 
+#if CONFIG_LK_EXAMPLE_START_IN_STANDBY
+    wait_for_chat_button_press();
+#endif
+
     lichuang_ui_show_message("LIVEKIT", "CHECKING CLOCK", "BACKGROUND NTP", ":|");
     wait_for_time_sync();
 
@@ -268,10 +272,6 @@ static void app_task(void *arg)
     while (true) {
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
-#endif
-
-#if CONFIG_LK_EXAMPLE_START_IN_STANDBY
-    wait_for_chat_button_press();
 #endif
 
     lichuang_ui_show_message("LIVEKIT", "PREPARING AUDIO", "JOINING ROOM", ":)");

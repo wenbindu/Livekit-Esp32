@@ -18,7 +18,7 @@
 - `components/78__esp-wifi-connect`：本地 vendored 的配网页面组件
 - `components/78__xiaozhi-fonts`：本地 vendored 的字体和表情资源
 - `configs/`：板级默认配置、dev/prod profile、本地配置样例
-- `configs/scenarios/`：不同使用场景的 overlay，例如 `dev-chat`、`debug-jwt`
+- `configs/scenarios/`：不同使用场景的 overlay，例如 `dev-chat`、`debug-jwt`、`dev-audio-ws`、`release-token`
 - `docs/`：调试、打包、模式说明文档
 - `scripts/project.sh`：配置、编译、烧录、串口监控入口
 - `scripts/package_firmware.sh`：按场景打包固件
@@ -96,6 +96,11 @@ cp configs/livekit.local.env.example configs/livekit.local.env
 - `sandbox`：需要 `LIVEKIT_SANDBOX_ID`
 - `static_token`：需要 `LIVEKIT_URL`、`LIVEKIT_TOKEN`
 
+常用 token-server 参数：
+
+- `TOKEN_SERVER_RETRY_DELAY_MS`
+- `TOKEN_SERVER_AUTH_MAX_FAILURES`
+
 ### 4. 编译与烧录
 
 日常聊天开发固件：
@@ -114,6 +119,12 @@ SCENARIO=debug-jwt bash scripts/project.sh flash-monitor
 
 ```bash
 SCENARIO=dev-audio-ws bash scripts/project.sh flash-monitor
+```
+
+发布版 token-server 固件：
+
+```bash
+SCENARIO=release-token bash scripts/project.sh flash-monitor
 ```
 
 ## 场景配置模型
@@ -135,6 +146,7 @@ SCENARIO=dev-audio-ws bash scripts/project.sh flash-monitor
 - `dev-audio-ws`：同时导出上行和下行音频，用于 WAV 分析
 - `dev-uplink-only`：只做本地收音链路排查
 - `prod-standby`：更接近生产模式，先待机再进入聊天
+- `release-token`：发布版固件，JWT 在 server 侧签发，设备端只取 token 并自动刷新
 
 更多说明见：
 
@@ -142,6 +154,7 @@ SCENARIO=dev-audio-ws bash scripts/project.sh flash-monitor
 - `docs/firmware-packaging.md`
 - `docs/debug-audio.md`
 - `docs/debug-jwt.md`
+- `docs/release-token.md`
 
 ## 力创开发板注意事项
 
@@ -161,6 +174,10 @@ SCENARIO=dev-audio-ws bash scripts/project.sh flash-monitor
 ```bash
 python3 scripts/token_server.py --env-file configs/livekit.local.env
 ```
+
+如果你要使用正式发布流程，也就是 server 签发 JWT、设备端自动换 token、多次鉴权失败后显示 `AUTH EXPIRED`，请看：
+
+- `docs/release-token.md`
 
 如果设备网络无法访问本地 token server，可临时使用 `SCENARIO=debug-jwt`。
 
@@ -199,6 +216,7 @@ bash scripts/package_firmware.sh dev-chat
 ```bash
 bash scripts/package_firmware.sh debug-jwt
 bash scripts/package_firmware.sh dev-audio-ws
+bash scripts/package_firmware.sh release-token
 ```
 
 ## 实际使用建议
@@ -206,4 +224,3 @@ bash scripts/package_firmware.sh dev-audio-ws
 - LiveKit Cloud 是否可达仍然取决于开发板所处网络
 - 如果网页端也无法和 agent 对话，应先查 agent 日志，不要优先怀疑固件
 - 生产环境优先使用 token server，不要把 API secret 放到设备端
-

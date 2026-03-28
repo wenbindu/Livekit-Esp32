@@ -38,7 +38,14 @@
 static const char *TAG = "livekit_room";
 static livekit_room_handle_t s_room_handle;
 static esp_err_t http_response_buffer_event_handler(esp_http_client_event_t *event);
+#if CONFIG_LK_EXAMPLE_USE_DEVICE_JWT
 static void request_agent_dispatch_if_needed(void);
+#endif
+static void destroy_room(void);
+static void on_state_changed(livekit_connection_state_t state, void *ctx);
+static void on_room_info(const livekit_room_info_t *info, void *ctx);
+static void on_participant_info(const livekit_participant_info_t *info, void *ctx);
+static void on_data_received(const livekit_data_received_t *data, void *ctx);
 
 #define TOKEN_SERVER_RESPONSE_MAX 8192
 #define TOKEN_SERVER_URL_MAX 256
@@ -50,6 +57,17 @@ static void request_agent_dispatch_if_needed(void);
 #define AGENT_DISPATCH_DELAY_TASK_PRIORITY 3
 #define AGENT_DISPATCH_TASK_STACK_SIZE 16384
 #define AGENT_DISPATCH_TASK_PRIORITY 4
+#define TOKEN_SERVER_CONNECT_TASK_STACK_SIZE 8192
+#define TOKEN_SERVER_CONNECT_TASK_PRIORITY 4
+
+typedef enum {
+    TOKEN_SERVER_FETCH_RESULT_OK = 0,
+    TOKEN_SERVER_FETCH_RESULT_TRANSPORT,
+    TOKEN_SERVER_FETCH_RESULT_HTTP_UNAUTHORIZED,
+    TOKEN_SERVER_FETCH_RESULT_HTTP_CLIENT_ERROR,
+    TOKEN_SERVER_FETCH_RESULT_HTTP_SERVER_ERROR,
+    TOKEN_SERVER_FETCH_RESULT_INVALID_RESPONSE,
+} token_server_fetch_result_t;
 
 typedef struct {
     char url[TOKEN_SERVER_URL_MAX];
@@ -63,6 +81,9 @@ typedef struct {
     bool agent_dispatch_scheduled;
     bool agent_dispatch_requested;
     bool agent_dispatch_inflight;
+    bool stop_requested;
+    bool token_connect_task_running;
+    bool token_refresh_pending;
     char room_sid[32];
     char room_name[48];
     char agent_identity[48];
@@ -71,6 +92,8 @@ typedef struct {
     char last_assistant_text[192];
     char current_emoji[16];
     int64_t last_text_us;
+    uint8_t auth_failure_count;
+    uint32_t connect_generation;
 } livekit_runtime_state_t;
 
 typedef struct {
@@ -83,13 +106,26 @@ typedef struct {
     char token[TOKEN_SERVER_TOKEN_MAX];
 } fetched_room_credentials_t;
 
+typedef struct {
+    token_server_fetch_result_t result;
+    int http_status;
+    char error_text[96];
+} token_server_fetch_diag_t;
+
+typedef struct {
+    uint32_t generation;
+    uint32_t delay_ms;
+} token_server_connect_task_args_t;
+
 static livekit_runtime_state_t s_runtime;
+static portMUX_TYPE s_runtime_mux = portMUX_INITIALIZER_UNLOCKED;
 
 static void *alloc_internal_zeroed(size_t size)
 {
     return heap_caps_calloc(1, size, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
 }
 
+#if CONFIG_LK_EXAMPLE_USE_DEVICE_JWT
 static void *alloc_preferred_zeroed(size_t size)
 {
     return heap_caps_calloc_prefer(
@@ -99,6 +135,7 @@ static void *alloc_preferred_zeroed(size_t size)
         MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT,
         MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
 }
+#endif
 
 static void log_heap_state(const char *stage)
 {
@@ -188,6 +225,7 @@ static const char *active_room_name(void)
     return s_runtime.room_name[0] != '\0' ? s_runtime.room_name : CONFIG_LK_EXAMPLE_ROOM_NAME;
 }
 
+#if CONFIG_LK_EXAMPLE_USE_DEVICE_JWT
 static bool active_room_sid_matches(const char *room_sid)
 {
     return room_sid != NULL &&
@@ -195,6 +233,7 @@ static bool active_room_sid_matches(const char *room_sid)
         s_runtime.room_sid[0] != '\0' &&
         strcmp(s_runtime.room_sid, room_sid) == 0;
 }
+#endif
 
 static void ensure_runtime_room_name(void)
 {
@@ -224,6 +263,134 @@ static void ensure_runtime_room_name(void)
 
     strlcpy(s_runtime.room_name, CONFIG_LK_EXAMPLE_ROOM_NAME, sizeof(s_runtime.room_name));
     ESP_LOGI(TAG, "Using configured room name: %s", s_runtime.room_name);
+}
+
+static void initialize_runtime_state(void)
+{
+    memset(&s_runtime, 0, sizeof(s_runtime));
+    strlcpy(s_runtime.current_emoji, ":)", sizeof(s_runtime.current_emoji));
+    ensure_runtime_room_name();
+}
+
+static void reset_connection_runtime_state(bool clear_chat_history)
+{
+    s_runtime.agent_active = false;
+    s_runtime.agent_dispatch_scheduled = false;
+    s_runtime.agent_dispatch_requested = false;
+    s_runtime.agent_dispatch_inflight = false;
+    s_runtime.room_sid[0] = '\0';
+    s_runtime.agent_identity[0] = '\0';
+    s_runtime.agent_name[0] = '\0';
+
+    if (clear_chat_history) {
+        s_runtime.last_user_text[0] = '\0';
+        s_runtime.last_assistant_text[0] = '\0';
+        s_runtime.last_text_us = 0;
+    }
+    if (clear_chat_history || s_runtime.current_emoji[0] == '\0') {
+        strlcpy(s_runtime.current_emoji, ":)", sizeof(s_runtime.current_emoji));
+    }
+}
+
+static bool runtime_is_stop_requested(void)
+{
+    bool stop_requested = false;
+
+    taskENTER_CRITICAL(&s_runtime_mux);
+    stop_requested = s_runtime.stop_requested;
+    taskEXIT_CRITICAL(&s_runtime_mux);
+    return stop_requested;
+}
+
+static void runtime_set_stop_requested(bool stop_requested)
+{
+    taskENTER_CRITICAL(&s_runtime_mux);
+    s_runtime.stop_requested = stop_requested;
+    if (stop_requested) {
+        s_runtime.token_refresh_pending = false;
+    }
+    taskEXIT_CRITICAL(&s_runtime_mux);
+}
+
+static bool runtime_begin_token_connect_task(uint32_t *generation_out)
+{
+    bool ok = false;
+
+    taskENTER_CRITICAL(&s_runtime_mux);
+    if (!s_runtime.stop_requested && !s_runtime.token_connect_task_running) {
+        s_runtime.token_connect_task_running = true;
+        s_runtime.token_refresh_pending = true;
+        s_runtime.connect_generation++;
+        if (generation_out != NULL) {
+            *generation_out = s_runtime.connect_generation;
+        }
+        ok = true;
+    }
+    taskEXIT_CRITICAL(&s_runtime_mux);
+    return ok;
+}
+
+static void runtime_finish_token_connect_task(void)
+{
+    taskENTER_CRITICAL(&s_runtime_mux);
+    s_runtime.token_connect_task_running = false;
+    taskEXIT_CRITICAL(&s_runtime_mux);
+}
+
+static bool runtime_is_current_generation(uint32_t generation)
+{
+    bool current = false;
+
+    taskENTER_CRITICAL(&s_runtime_mux);
+    current = generation == s_runtime.connect_generation;
+    taskEXIT_CRITICAL(&s_runtime_mux);
+    return current;
+}
+
+static void runtime_clear_auth_failure_state(void)
+{
+    taskENTER_CRITICAL(&s_runtime_mux);
+    s_runtime.auth_failure_count = 0;
+    s_runtime.token_refresh_pending = false;
+    taskEXIT_CRITICAL(&s_runtime_mux);
+}
+
+static uint8_t runtime_record_auth_failure(void)
+{
+    uint8_t failure_count = 0;
+
+    taskENTER_CRITICAL(&s_runtime_mux);
+    if (s_runtime.auth_failure_count < UINT8_MAX) {
+        s_runtime.auth_failure_count++;
+    }
+    failure_count = s_runtime.auth_failure_count;
+    s_runtime.token_refresh_pending = true;
+    taskEXIT_CRITICAL(&s_runtime_mux);
+    return failure_count;
+}
+
+static void runtime_mark_token_refresh_pending(void)
+{
+    taskENTER_CRITICAL(&s_runtime_mux);
+    s_runtime.token_refresh_pending = true;
+    taskEXIT_CRITICAL(&s_runtime_mux);
+}
+
+static void runtime_clear_token_refresh_pending(void)
+{
+    taskENTER_CRITICAL(&s_runtime_mux);
+    s_runtime.token_refresh_pending = false;
+    taskEXIT_CRITICAL(&s_runtime_mux);
+}
+
+static bool runtime_token_refresh_pending(void)
+{
+    bool pending = false;
+
+    taskENTER_CRITICAL(&s_runtime_mux);
+    pending = s_runtime.token_refresh_pending;
+    taskEXIT_CRITICAL(&s_runtime_mux);
+    return pending;
 }
 
 static void format_agent_label(char *out, size_t out_size)
@@ -997,8 +1164,79 @@ static void log_token_server_diagnostics(const char *token_server_url)
     ESP_LOGI(TAG, "Token server url=%s", token_server_url);
     log_host_resolution("token_server", host);
 }
+
+static const char *token_server_fetch_result_str(token_server_fetch_result_t result)
+{
+    switch (result) {
+    case TOKEN_SERVER_FETCH_RESULT_OK:
+        return "ok";
+    case TOKEN_SERVER_FETCH_RESULT_TRANSPORT:
+        return "transport";
+    case TOKEN_SERVER_FETCH_RESULT_HTTP_UNAUTHORIZED:
+        return "http_unauthorized";
+    case TOKEN_SERVER_FETCH_RESULT_HTTP_CLIENT_ERROR:
+        return "http_client_error";
+    case TOKEN_SERVER_FETCH_RESULT_HTTP_SERVER_ERROR:
+        return "http_server_error";
+    case TOKEN_SERVER_FETCH_RESULT_INVALID_RESPONSE:
+        return "invalid_response";
+    default:
+        return "unknown";
+    }
+}
+
+static void init_token_server_fetch_diag(token_server_fetch_diag_t *diag)
+{
+    if (diag == NULL) {
+        return;
+    }
+    memset(diag, 0, sizeof(*diag));
+    diag->result = TOKEN_SERVER_FETCH_RESULT_TRANSPORT;
+}
+
+static void set_token_server_fetch_error_text(token_server_fetch_diag_t *diag, const char *text)
+{
+    if (diag == NULL || text == NULL || text[0] == '\0') {
+        return;
+    }
+
+    strlcpy(diag->error_text, text, sizeof(diag->error_text));
+}
+
+static void token_server_show_retry_message(const char *line1, const char *line2)
+{
+    lichuang_ui_show_message(
+        "LIVEKIT",
+        line1 != NULL ? line1 : "TOKEN RETRY",
+        line2 != NULL ? line2 : "TRYING AGAIN",
+        ":|");
+}
+
+static void token_server_show_auth_expired(void)
+{
+    runtime_clear_token_refresh_pending();
+    lichuang_ui_show_message("LIVEKIT", "AUTH EXPIRED", "CONTACT ADMIN", ":(");
+}
+
+static bool token_server_auth_failure_should_retry(uint8_t failure_count)
+{
+    if (failure_count >= CONFIG_LK_EXAMPLE_TOKEN_SERVER_AUTH_MAX_FAILURES) {
+        ESP_LOGE(TAG,
+            "Token auth failed too many times: %u/%u",
+            failure_count,
+            (unsigned)CONFIG_LK_EXAMPLE_TOKEN_SERVER_AUTH_MAX_FAILURES);
+        token_server_show_auth_expired();
+        return false;
+    }
+
+    char detail[48];
+    snprintf(detail, sizeof(detail), "RETRY %u/%u", failure_count, (unsigned)CONFIG_LK_EXAMPLE_TOKEN_SERVER_AUTH_MAX_FAILURES);
+    token_server_show_retry_message("REFRESHING TOKEN", detail);
+    return true;
+}
 #endif
 
+#if CONFIG_LK_EXAMPLE_USE_DEVICE_JWT
 static bool clock_is_valid_for_jwt(void)
 {
     time_t now = 0;
@@ -1633,6 +1871,11 @@ static void schedule_agent_dispatch_if_needed(void)
 
     ESP_LOGI(TAG, "Scheduled delayed agent dispatch for room sid=%s", s_runtime.room_sid);
 }
+#else
+static void schedule_agent_dispatch_if_needed(void)
+{
+}
+#endif
 
 #if CONFIG_LK_EXAMPLE_USE_TOKEN_SERVER
 static bool build_token_server_request_body(char **out_body)
@@ -1675,7 +1918,10 @@ static bool build_token_server_request_body(char **out_body)
     return true;
 }
 
-static bool parse_token_server_response(const char *body, fetched_room_credentials_t *credentials)
+static bool parse_token_server_response(
+    const char *body,
+    fetched_room_credentials_t *credentials,
+    token_server_fetch_diag_t *diag)
 {
     cJSON *root = NULL;
     cJSON *server_url = NULL;
@@ -1689,6 +1935,10 @@ static bool parse_token_server_response(const char *body, fetched_room_credentia
     root = cJSON_Parse(body);
     if (root == NULL) {
         ESP_LOGE(TAG, "Token server returned invalid JSON");
+        if (diag != NULL) {
+            diag->result = TOKEN_SERVER_FETCH_RESULT_INVALID_RESPONSE;
+            set_token_server_fetch_error_text(diag, "invalid_json");
+        }
         goto cleanup;
     }
 
@@ -1697,12 +1947,19 @@ static bool parse_token_server_response(const char *body, fetched_room_credentia
     if (!cJSON_IsString(server_url) || server_url->valuestring == NULL ||
         !cJSON_IsString(token) || token->valuestring == NULL) {
         ESP_LOGE(TAG, "Token server response missing server_url or token");
+        if (diag != NULL) {
+            diag->result = TOKEN_SERVER_FETCH_RESULT_INVALID_RESPONSE;
+            set_token_server_fetch_error_text(diag, "missing_server_url_or_token");
+        }
         goto cleanup;
     }
 
     strlcpy(credentials->server_url, server_url->valuestring, sizeof(credentials->server_url));
     strlcpy(credentials->token, token->valuestring, sizeof(credentials->token));
     ok = credentials->server_url[0] != '\0' && credentials->token[0] != '\0';
+    if (ok && diag != NULL) {
+        diag->result = TOKEN_SERVER_FETCH_RESULT_OK;
+    }
 
 cleanup:
     if (root != NULL) {
@@ -1711,7 +1968,9 @@ cleanup:
     return ok;
 }
 
-static bool fetch_token_server_credentials(fetched_room_credentials_t *credentials)
+static bool fetch_token_server_credentials(
+    fetched_room_credentials_t *credentials,
+    token_server_fetch_diag_t *diag)
 {
     esp_http_client_handle_t client = NULL;
     char *body = NULL;
@@ -1722,9 +1981,14 @@ static bool fetch_token_server_credentials(fetched_room_credentials_t *credentia
         return false;
     }
     memset(credentials, 0, sizeof(*credentials));
+    init_token_server_fetch_diag(diag);
 
     if (!build_token_server_request_body(&body)) {
         ESP_LOGE(TAG, "Failed to build token server request body");
+        if (diag != NULL) {
+            diag->result = TOKEN_SERVER_FETCH_RESULT_INVALID_RESPONSE;
+            set_token_server_fetch_error_text(diag, "request_body_failed");
+        }
         return false;
     }
 
@@ -1738,6 +2002,10 @@ static bool fetch_token_server_credentials(fetched_room_credentials_t *credentia
     client = esp_http_client_init(&config);
     if (client == NULL) {
         ESP_LOGE(TAG, "Failed to init token server HTTP client");
+        if (diag != NULL) {
+            diag->result = TOKEN_SERVER_FETCH_RESULT_TRANSPORT;
+            set_token_server_fetch_error_text(diag, "http_client_init_failed");
+        }
         goto cleanup;
     }
 
@@ -1746,18 +2014,34 @@ static bool fetch_token_server_credentials(fetched_room_credentials_t *credentia
     ESP_ERROR_CHECK_WITHOUT_ABORT(esp_http_client_set_post_field(client, body, (int)strlen(body)));
 
     ESP_LOGI(TAG, "Requesting token from %s", CONFIG_LK_EXAMPLE_TOKEN_SERVER_URL);
-    if (esp_http_client_perform(client) != ESP_OK) {
-        ESP_LOGE(TAG, "Token server request failed");
+    esp_err_t err = esp_http_client_perform(client);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Token server request failed: %s", esp_err_to_name(err));
+        if (diag != NULL) {
+            diag->result = TOKEN_SERVER_FETCH_RESULT_TRANSPORT;
+            set_token_server_fetch_error_text(diag, esp_err_to_name(err));
+        }
         goto cleanup;
     }
 
     int status = esp_http_client_get_status_code(client);
     if (status < 200 || status >= 300) {
         ESP_LOGE(TAG, "Token server returned HTTP %d body=%s", status, response.body);
+        if (diag != NULL) {
+            diag->http_status = status;
+            if (status == 401 || status == 403) {
+                diag->result = TOKEN_SERVER_FETCH_RESULT_HTTP_UNAUTHORIZED;
+            } else if (status >= 400 && status < 500) {
+                diag->result = TOKEN_SERVER_FETCH_RESULT_HTTP_CLIENT_ERROR;
+            } else {
+                diag->result = TOKEN_SERVER_FETCH_RESULT_HTTP_SERVER_ERROR;
+            }
+            set_token_server_fetch_error_text(diag, response.body);
+        }
         goto cleanup;
     }
 
-    ok = parse_token_server_response(response.body, credentials);
+    ok = parse_token_server_response(response.body, credentials, diag);
 
 cleanup:
     if (client != NULL) {
@@ -1767,6 +2051,153 @@ cleanup:
         cJSON_free(body);
     }
     return ok;
+}
+
+static bool create_room_handle(void)
+{
+    if (s_room_handle != NULL) {
+        ESP_LOGW(TAG, "Destroying stale room before create");
+        destroy_room();
+    }
+
+    livekit_room_options_t room_options = {
+        .publish = {
+            .kind = LIVEKIT_MEDIA_TYPE_AUDIO,
+            .audio_encode = {
+                .codec = LIVEKIT_AUDIO_CODEC_OPUS,
+                .sample_rate = 16000,
+                .channel_count = 1,
+            },
+            .capturer = livekit_media_get_capturer(),
+        },
+        .subscribe = {
+            .kind = LIVEKIT_MEDIA_TYPE_AUDIO,
+            .renderer = livekit_media_get_renderer(),
+        },
+        .on_state_changed = on_state_changed,
+        .on_data_received = on_data_received,
+        .on_room_info = on_room_info,
+        .on_participant_info = on_participant_info,
+    };
+
+    if (livekit_room_create(&s_room_handle, &room_options) != LIVEKIT_ERR_NONE) {
+        ESP_LOGE(TAG, "Failed to create room");
+        lichuang_ui_show_message("LIVEKIT", "ROOM CREATE FAILED", "CHECK SERIAL LOG", ":(");
+        return false;
+    }
+
+    return true;
+}
+
+static void token_server_connect_task(void *arg)
+{
+    token_server_connect_task_args_t *task_args = (token_server_connect_task_args_t *)arg;
+    uint32_t generation = task_args != NULL ? task_args->generation : 0;
+    uint32_t delay_ms = task_args != NULL ? task_args->delay_ms : 0;
+    fetched_room_credentials_t credentials = {};
+    token_server_fetch_diag_t diag = {};
+
+    log_heap_state("token-task-start");
+    while (!runtime_is_stop_requested()) {
+        if (!runtime_is_current_generation(generation)) {
+            ESP_LOGI(TAG, "Skip stale token connect task generation=%" PRIu32, generation);
+            break;
+        }
+
+        if (delay_ms > 0) {
+            vTaskDelay(pdMS_TO_TICKS(delay_ms));
+            delay_ms = 0;
+            if (runtime_is_stop_requested() || !runtime_is_current_generation(generation)) {
+                break;
+            }
+        }
+
+        reset_connection_runtime_state(false);
+        destroy_room();
+        log_token_server_diagnostics(CONFIG_LK_EXAMPLE_TOKEN_SERVER_URL);
+
+        if (!fetch_token_server_credentials(&credentials, &diag)) {
+            ESP_LOGW(TAG,
+                "Token fetch failed: result=%s http_status=%d error=%s",
+                token_server_fetch_result_str(diag.result),
+                diag.http_status,
+                diag.error_text[0] != '\0' ? diag.error_text : "(none)");
+
+            if (diag.result == TOKEN_SERVER_FETCH_RESULT_HTTP_UNAUTHORIZED) {
+                uint8_t failure_count = runtime_record_auth_failure();
+                if (!token_server_auth_failure_should_retry(failure_count)) {
+                    break;
+                }
+            } else {
+                token_server_show_retry_message("TOKEN SERVER", "RETRYING SOON");
+            }
+
+            delay_ms = CONFIG_LK_EXAMPLE_TOKEN_SERVER_RETRY_DELAY_MS;
+            continue;
+        }
+
+        if (!create_room_handle()) {
+            token_server_show_retry_message("ROOM CREATE", "RETRYING SOON");
+            delay_ms = CONFIG_LK_EXAMPLE_TOKEN_SERVER_RETRY_DELAY_MS;
+            continue;
+        }
+
+        log_livekit_network_diagnostics(credentials.server_url);
+        livekit_err_t connect_res = livekit_room_connect(s_room_handle, credentials.server_url, credentials.token);
+        if (connect_res != LIVEKIT_ERR_NONE) {
+            ESP_LOGE(TAG, "Failed to connect to room with refreshed token");
+            destroy_room();
+            token_server_show_retry_message("CONNECT FAILED", "RETRYING SOON");
+            delay_ms = CONFIG_LK_EXAMPLE_TOKEN_SERVER_RETRY_DELAY_MS;
+            continue;
+        }
+
+        ESP_LOGI(TAG, "Token-server connect attempt started");
+        runtime_mark_token_refresh_pending();
+        break;
+    }
+
+    runtime_finish_token_connect_task();
+    free(task_args);
+    vTaskDeleteWithCaps(NULL);
+}
+
+static bool schedule_token_server_connect_task(uint32_t delay_ms)
+{
+    token_server_connect_task_args_t *task_args = NULL;
+    BaseType_t task_ok;
+    uint32_t generation = 0;
+
+    if (!runtime_begin_token_connect_task(&generation)) {
+        return false;
+    }
+
+    task_args = (token_server_connect_task_args_t *)alloc_internal_zeroed(sizeof(*task_args));
+    if (task_args == NULL) {
+        runtime_finish_token_connect_task();
+        ESP_LOGE(TAG, "Failed to allocate token connect task args");
+        return false;
+    }
+
+    task_args->generation = generation;
+    task_args->delay_ms = delay_ms;
+
+    task_ok = xTaskCreateWithCaps(
+        token_server_connect_task,
+        "lk_token_conn",
+        TOKEN_SERVER_CONNECT_TASK_STACK_SIZE,
+        task_args,
+        TOKEN_SERVER_CONNECT_TASK_PRIORITY,
+        NULL,
+        MALLOC_CAP_SPIRAM);
+    if (task_ok != pdPASS) {
+        runtime_finish_token_connect_task();
+        free(task_args);
+        ESP_LOGE(TAG, "Failed to start token connect task");
+        return false;
+    }
+
+    return true;
 }
 #endif
 
@@ -1813,6 +2244,26 @@ static bool have_credentials(void)
 #endif
 }
 
+#if CONFIG_LK_EXAMPLE_USE_TOKEN_SERVER
+static bool handle_token_server_room_auth_failure(livekit_failure_reason_t reason)
+{
+    if (reason != LIVEKIT_FAILURE_REASON_BAD_TOKEN &&
+        reason != LIVEKIT_FAILURE_REASON_UNAUTHORIZED) {
+        return false;
+    }
+
+    uint8_t failure_count = runtime_record_auth_failure();
+    if (!token_server_auth_failure_should_retry(failure_count)) {
+        return true;
+    }
+
+    if (!schedule_token_server_connect_task(CONFIG_LK_EXAMPLE_TOKEN_SERVER_RETRY_DELAY_MS)) {
+        ESP_LOGW(TAG, "Token refresh task already scheduled or unavailable");
+    }
+    return true;
+}
+#endif
+
 static void on_state_changed(livekit_connection_state_t state, void *ctx)
 {
     (void)ctx;
@@ -1834,6 +2285,7 @@ static void on_state_changed(livekit_connection_state_t state, void *ctx)
         break;
     case LIVEKIT_CONNECTION_STATE_CONNECTED:
         log_heap_state("room-connected");
+        runtime_clear_auth_failure_state();
         ESP_ERROR_CHECK_WITHOUT_ABORT(lichuang_ui_resume());
         schedule_agent_dispatch_if_needed();
         if (have_chat_history()) {
@@ -1845,10 +2297,20 @@ static void on_state_changed(livekit_connection_state_t state, void *ctx)
         break;
     case LIVEKIT_CONNECTION_STATE_DISCONNECTED:
         ESP_ERROR_CHECK_WITHOUT_ABORT(lichuang_ui_resume());
+        if (runtime_token_refresh_pending()) {
+            lichuang_ui_show_message("LIVEKIT", "REFRESHING TOKEN", active_room_name(), ":|");
+            break;
+        }
         lichuang_ui_show_message("LIVEKIT", "DISCONNECTED", "PRESS RESET", ":(");
         break;
     case LIVEKIT_CONNECTION_STATE_FAILED:
         ESP_ERROR_CHECK_WITHOUT_ABORT(lichuang_ui_resume());
+#if CONFIG_LK_EXAMPLE_USE_TOKEN_SERVER
+        if (handle_token_server_room_auth_failure(reason)) {
+            break;
+        }
+        runtime_clear_token_refresh_pending();
+#endif
         snprintf(detail, sizeof(detail), "FAIL %s", livekit_failure_reason_str(reason));
         lichuang_ui_show_message("LIVEKIT", "CONNECTION FAILED", detail, ":(");
         break;
@@ -2031,7 +2493,7 @@ void livekit_app_notify_remote_audio_frame(uint32_t frame_count, uint32_t pts, u
 
 bool livekit_app_join_room(void)
 {
-    if (s_room_handle != NULL) {
+    if (s_room_handle != NULL || s_runtime.token_connect_task_running) {
         ESP_LOGW(TAG, "Room already created");
         return true;
     }
@@ -2041,38 +2503,14 @@ bool livekit_app_join_room(void)
         return false;
     }
 
-    memset(&s_runtime, 0, sizeof(s_runtime));
-    strlcpy(s_runtime.current_emoji, ":)", sizeof(s_runtime.current_emoji));
-    ensure_runtime_room_name();
-
-    livekit_room_options_t room_options = {
-        .publish = {
-            .kind = LIVEKIT_MEDIA_TYPE_AUDIO,
-            .audio_encode = {
-                .codec = LIVEKIT_AUDIO_CODEC_OPUS,
-                .sample_rate = 16000,
-                .channel_count = 1,
-            },
-            .capturer = livekit_media_get_capturer(),
-        },
-        .subscribe = {
-            .kind = LIVEKIT_MEDIA_TYPE_AUDIO,
-            .renderer = livekit_media_get_renderer(),
-        },
-        .on_state_changed = on_state_changed,
-        .on_data_received = on_data_received,
-        .on_room_info = on_room_info,
-        .on_participant_info = on_participant_info,
-    };
-
-    if (livekit_room_create(&s_room_handle, &room_options) != LIVEKIT_ERR_NONE) {
-        ESP_LOGE(TAG, "Failed to create room");
-        lichuang_ui_show_message("LIVEKIT", "ROOM CREATE FAILED", "CHECK SERIAL LOG", ":(");
-        return false;
-    }
+    initialize_runtime_state();
+    runtime_set_stop_requested(false);
 
     livekit_err_t connect_res = LIVEKIT_ERR_NONE;
 #if CONFIG_LK_EXAMPLE_USE_SANDBOX
+    if (!create_room_handle()) {
+        return false;
+    }
     livekit_sandbox_res_t res = {};
     livekit_sandbox_options_t sandbox_opts = {
         .sandbox_id = CONFIG_LK_EXAMPLE_SANDBOX_ID,
@@ -2111,6 +2549,9 @@ bool livekit_app_join_room(void)
     connect_res = livekit_room_connect(s_room_handle, res.server_url, res.token);
     livekit_sandbox_res_free(&res);
 #elif CONFIG_LK_EXAMPLE_USE_DEVICE_JWT
+    if (!create_room_handle()) {
+        return false;
+    }
     fetched_room_credentials_t credentials = {};
 
     log_livekit_network_diagnostics(CONFIG_LK_EXAMPLE_SERVER_URL);
@@ -2126,22 +2567,17 @@ bool livekit_app_join_room(void)
         credentials.server_url,
         credentials.token);
 #elif CONFIG_LK_EXAMPLE_USE_TOKEN_SERVER
-    fetched_room_credentials_t credentials = {};
-
-    log_token_server_diagnostics(CONFIG_LK_EXAMPLE_TOKEN_SERVER_URL);
-    if (!fetch_token_server_credentials(&credentials)) {
-        ESP_LOGE(TAG, "Failed to fetch token from token server");
-        lichuang_ui_show_message("LIVEKIT", "TOKEN FETCH FAILED", "CHECK TOKEN SERVER", ":(");
-        destroy_room();
+    if (!schedule_token_server_connect_task(0)) {
+        ESP_LOGE(TAG, "Failed to start token-server connect supervisor");
+        lichuang_ui_show_message("LIVEKIT", "TOKEN TASK FAILED", "CHECK HEAP", ":(");
         return false;
     }
-
-    log_livekit_network_diagnostics(credentials.server_url);
-    connect_res = livekit_room_connect(
-        s_room_handle,
-        credentials.server_url,
-        credentials.token);
+    lichuang_ui_show_message("LIVEKIT", "FETCHING TOKEN", active_room_name(), ":|");
+    return true;
 #elif CONFIG_LK_EXAMPLE_USE_PREGENERATED
+    if (!create_room_handle()) {
+        return false;
+    }
     log_livekit_network_diagnostics(CONFIG_LK_EXAMPLE_SERVER_URL);
     connect_res = livekit_room_connect(
         s_room_handle,
@@ -2161,6 +2597,7 @@ bool livekit_app_join_room(void)
 
 void livekit_app_leave_room(void)
 {
+    runtime_set_stop_requested(true);
     if (s_room_handle == NULL) {
         return;
     }

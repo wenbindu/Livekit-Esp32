@@ -18,6 +18,7 @@ Examples:
   bash scripts/package_firmware.sh dev-chat
   bash scripts/package_firmware.sh dev-uplink-ws
   bash scripts/package_firmware.sh prod-standby
+  bash scripts/package_firmware.sh release-token
 
 Environment:
   CONFIG_ENV_FILE     Local env file, default: configs/livekit.local.env
@@ -128,6 +129,7 @@ room=${LIVEKIT_ROOM:-}
 participant=${LIVEKIT_PARTICIPANT:-}
 agent_name=${LIVEKIT_AGENT_NAME:-}
 debug_uplink_ws=${ENABLE_DEBUG_UPLINK_WS:-0}
+debug_downlink_ws=${ENABLE_DEBUG_DOWNLINK_WS:-0}
 debug_uplink_wav=${ENABLE_DEBUG_UPLINK_WAV:-0}
 local_audio_uplink_only=${LOCAL_AUDIO_UPLINK_ONLY:-0}
 start_in_standby=${START_IN_STANDBY:-0}
