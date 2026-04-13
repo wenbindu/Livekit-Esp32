@@ -17,8 +17,8 @@ English | [简体中文](README.zh-CN.md)
 - `main/`: firmware app, board glue, LiveKit integration, UI, Wi-Fi flow
 - `components/78__esp-wifi-connect`: vendored provisioning portal component
 - `components/78__xiaozhi-fonts`: vendored font and emoji assets
-- `configs/`: board/profile defaults plus the local config example
-- `configs/scenarios/`: scenario overlays such as `dev-chat`, `debug-jwt`, `dev-audio-ws`, and `release-token`
+- `configs/`: board/profile defaults plus local config examples
+- `configs/scenarios/`: scenario overlays such as `dev-token`, `dev-audio-ws`, and `release-token`
 - `docs/`: development and packaging notes
 - `scripts/project.sh`: configure/build/flash wrapper
 - `scripts/package_firmware.sh`: package scenario-specific firmware artifacts
@@ -27,20 +27,21 @@ English | [简体中文](README.zh-CN.md)
 
 ## Open-Source Safety
 
-Real credentials must stay in:
+Real credentials must stay in ignored local files:
 
 - `configs/livekit.local.env`
+- `configs/token_server.local.env`
 
-That file is gitignored. The tracked file:
+The tracked placeholders are:
 
 - `configs/livekit.local.env.example`
+- `configs/token_server.local.env.example`
 
 contains placeholders only.
 
 Important:
 
-- `AUTH_MODE=token_server` is the recommended mode for development and production.
-- `AUTH_MODE=device_jwt` is development-only. It embeds `LIVEKIT_API_SECRET` into the generated firmware image.
+- shipped firmware scenarios in this repo use `AUTH_MODE=token_server`
 - Do not commit real tokens, API keys, or machine-local IPs into scenario files, Markdown docs, or tracked defaults.
 
 ## Tested Environment
@@ -89,30 +90,30 @@ cp configs/livekit.local.env.example configs/livekit.local.env
 
 Then edit `configs/livekit.local.env`.
 
-Minimum fields depend on auth mode:
+Minimum device-side fields:
 
-- `token_server`: `TOKEN_SERVER_URL`, plus the token server itself needs `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`
-- `device_jwt`: `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`
-- `sandbox`: `LIVEKIT_SANDBOX_ID`
-- `static_token`: `LIVEKIT_URL`, `LIVEKIT_TOKEN`
+- `AUTH_MODE=token_server`
+- `TOKEN_SERVER_URL`
+- `LIVEKIT_ROOM`
+- `LIVEKIT_PARTICIPANT`
+- `LIVEKIT_PARTICIPANT_IDENTITY`
+- `LIVEKIT_AGENT_NAME`
 
 Useful token-server knobs:
 
 - `TOKEN_SERVER_RETRY_DELAY_MS`
 - `TOKEN_SERVER_AUTH_MAX_FAILURES`
 
+Token-server runtime secrets live separately in:
+
+- `configs/token_server.local.env`
+
 ### 4. Build And Flash
 
-Normal development chat firmware:
+Normal development firmware:
 
 ```bash
-SCENARIO=dev-chat bash scripts/project.sh flash-monitor
-```
-
-Lower-overhead device-JWT firmware:
-
-```bash
-SCENARIO=debug-jwt bash scripts/project.sh flash-monitor
+SCENARIO=dev-token bash scripts/project.sh flash-monitor
 ```
 
 Dual-path debug-audio firmware:
@@ -140,11 +141,9 @@ It uses four layers:
 
 Useful scenarios:
 
-- `dev-chat`: default daily development firmware
-- `debug-jwt`: no debug audio WS export, device-generated JWT, lighter dev path
+- `dev-token`: default daily development firmware using token-server auth
 - `dev-uplink-ws`: export processed uplink audio to a desktop receiver
 - `dev-audio-ws`: export both uplink and downlink audio for WAV inspection
-- `dev-uplink-only`: local uplink diagnostics without normal room chat
 - `prod-standby`: production-like standby-first behavior
 - `release-token`: release firmware with server-side JWT signing and device-side token refresh
 
@@ -153,7 +152,6 @@ See:
 - `docs/profiles.md`
 - `docs/firmware-packaging.md`
 - `docs/debug-audio.md`
-- `docs/debug-jwt.md`
 - `docs/release-token.md`
 
 ## Lichuang Board Notes
@@ -198,8 +196,6 @@ For the release firmware flow that refreshes token-server JWTs and shows `AUTH E
 
 - `docs/release-token.md`
 
-If the board cannot reach your token server, use `SCENARIO=debug-jwt` temporarily.
-
 ## Debug-Audio Workflow
 
 Start the desktop receiver:
@@ -227,13 +223,12 @@ bash scripts/package_firmware.sh list
 Package a scenario:
 
 ```bash
-bash scripts/package_firmware.sh dev-chat
+bash scripts/package_firmware.sh dev-token
 ```
 
 Examples:
 
 ```bash
-bash scripts/package_firmware.sh debug-jwt
 bash scripts/package_firmware.sh dev-audio-ws
 bash scripts/package_firmware.sh release-token
 ```

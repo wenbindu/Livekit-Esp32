@@ -19,7 +19,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=8790)
     parser.add_argument("--path", default="/token")
-    parser.add_argument("--env-file", default="configs/livekit.local.env")
+    parser.add_argument("--env-file", default="configs/token_server.local.env")
     parser.add_argument("--ttl-seconds", type=int, default=3600)
     return parser.parse_args()
 

@@ -116,7 +116,7 @@ SCENARIO=release-token bash scripts/project.sh flash-monitor
 bash scripts/package_firmware.sh release-token
 ```
 
-## Why This Is Better Than `debug-jwt`
+## Why This Is The Default Auth Path
 
 - API secret stays off the device
 - token lifetime is controlled server-side

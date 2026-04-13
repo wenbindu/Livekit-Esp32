@@ -256,9 +256,5 @@ Check:
 
 - `README.md`
 - `README.zh-CN.md`
-- `docs/debug-jwt.md`
-- `docs/firmware-packaging.md`
-
 - `docs/firmware-packaging.md`
 - `docs/profiles.md`
-- `docs/rtc-debug-notes.md`

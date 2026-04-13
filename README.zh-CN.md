@@ -17,8 +17,8 @@
 - `main/`：主固件逻辑、LiveKit 接入、UI、配网、板级 glue code
 - `components/78__esp-wifi-connect`：本地 vendored 的配网页面组件
 - `components/78__xiaozhi-fonts`：本地 vendored 的字体和表情资源
-- `configs/`：板级默认配置、dev/prod profile、本地配置样例
-- `configs/scenarios/`：不同使用场景的 overlay，例如 `dev-chat`、`debug-jwt`、`dev-audio-ws`、`release-token`
+- `configs/`：板级默认配置、dev/prod profile、本地配置样例文件
+- `configs/scenarios/`：不同使用场景的 overlay，例如 `dev-token`、`dev-audio-ws`、`release-token`
 - `docs/`：调试、打包、模式说明文档
 - `scripts/project.sh`：配置、编译、烧录、串口监控入口
 - `scripts/package_firmware.sh`：按场景打包固件
@@ -27,20 +27,21 @@
 
 ## 开源安全说明
 
-真实密钥只能放在：
+真实密钥只能放在本地忽略文件里：
 
 - `configs/livekit.local.env`
+- `configs/token_server.local.env`
 
-这个文件已经被 `.gitignore` 忽略，不会进入仓库。
+这些文件都已经被 `.gitignore` 忽略，不会进入仓库。
 
 可以提交到仓库的只有样例文件：
 
 - `configs/livekit.local.env.example`
+- `configs/token_server.local.env.example`
 
 注意：
 
-- 推荐使用 `AUTH_MODE=token_server`
-- `AUTH_MODE=device_jwt` 仅适合开发调试，会把 `LIVEKIT_API_SECRET` 写进生成的固件
+- 仓库当前保留的固件场景统一使用 `AUTH_MODE=token_server`
 - 不要把真实的 API key、secret、token、局域网 IP 写进 scenario 文件、README 或默认配置
 
 ## 当前测试环境
@@ -89,30 +90,30 @@ cp configs/livekit.local.env.example configs/livekit.local.env
 
 然后编辑 `configs/livekit.local.env`。
 
-不同鉴权模式所需字段不同：
+设备侧至少需要这些字段：
 
-- `token_server`：需要 `TOKEN_SERVER_URL`；token server 自身再读取 `LIVEKIT_URL`、`LIVEKIT_API_KEY`、`LIVEKIT_API_SECRET`
-- `device_jwt`：需要 `LIVEKIT_URL`、`LIVEKIT_API_KEY`、`LIVEKIT_API_SECRET`
-- `sandbox`：需要 `LIVEKIT_SANDBOX_ID`
-- `static_token`：需要 `LIVEKIT_URL`、`LIVEKIT_TOKEN`
+- `AUTH_MODE=token_server`
+- `TOKEN_SERVER_URL`
+- `LIVEKIT_ROOM`
+- `LIVEKIT_PARTICIPANT`
+- `LIVEKIT_PARTICIPANT_IDENTITY`
+- `LIVEKIT_AGENT_NAME`
 
 常用 token-server 参数：
 
 - `TOKEN_SERVER_RETRY_DELAY_MS`
 - `TOKEN_SERVER_AUTH_MAX_FAILURES`
 
+token server 运行时密钥单独放在：
+
+- `configs/token_server.local.env`
+
 ### 4. 编译与烧录
 
-日常聊天开发固件：
+日常开发固件：
 
 ```bash
-SCENARIO=dev-chat bash scripts/project.sh flash-monitor
-```
-
-轻量化 `device_jwt` 调试固件：
-
-```bash
-SCENARIO=debug-jwt bash scripts/project.sh flash-monitor
+SCENARIO=dev-token bash scripts/project.sh flash-monitor
 ```
 
 双向音频导出调试固件：
@@ -140,11 +141,9 @@ SCENARIO=release-token bash scripts/project.sh flash-monitor
 
 常用场景：
 
-- `dev-chat`：默认开发聊天固件
-- `debug-jwt`：不上传 debug audio，设备本地生成 JWT，开发开销更低
+- `dev-token`：默认开发聊天固件，统一走 token server
 - `dev-uplink-ws`：导出处理后的上行音频
 - `dev-audio-ws`：同时导出上行和下行音频，用于 WAV 分析
-- `dev-uplink-only`：只做本地收音链路排查
 - `prod-standby`：更接近生产模式，先待机再进入聊天
 - `release-token`：发布版固件，JWT 在 server 侧签发，设备端只取 token 并自动刷新
 
@@ -153,7 +152,6 @@ SCENARIO=release-token bash scripts/project.sh flash-monitor
 - `docs/profiles.md`
 - `docs/firmware-packaging.md`
 - `docs/debug-audio.md`
-- `docs/debug-jwt.md`
 - `docs/release-token.md`
 
 ## 力创开发板注意事项
@@ -198,8 +196,6 @@ bash scripts/token_server_ctl.sh stop
 
 - `docs/release-token.md`
 
-如果设备网络无法访问本地 token server，可临时使用 `SCENARIO=debug-jwt`。
-
 ## Debug-Audio 工作流
 
 启动桌面端接收器：
@@ -227,13 +223,12 @@ bash scripts/package_firmware.sh list
 打包某个场景：
 
 ```bash
-bash scripts/package_firmware.sh dev-chat
+bash scripts/package_firmware.sh dev-token
 ```
 
 示例：
 
 ```bash
-bash scripts/package_firmware.sh debug-jwt
 bash scripts/package_firmware.sh dev-audio-ws
 bash scripts/package_firmware.sh release-token
 ```

@@ -57,7 +57,7 @@ static void on_data_received(const livekit_data_received_t *data, void *ctx);
 #define AGENT_DISPATCH_DELAY_TASK_PRIORITY 3
 #define AGENT_DISPATCH_TASK_STACK_SIZE 16384
 #define AGENT_DISPATCH_TASK_PRIORITY 4
-#define TOKEN_SERVER_CONNECT_TASK_STACK_SIZE 8192
+#define TOKEN_SERVER_CONNECT_TASK_STACK_SIZE 16384
 #define TOKEN_SERVER_CONNECT_TASK_PRIORITY 4
 
 typedef enum {
@@ -125,7 +125,6 @@ static void *alloc_internal_zeroed(size_t size)
     return heap_caps_calloc(1, size, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
 }
 
-#if CONFIG_LK_EXAMPLE_USE_DEVICE_JWT
 static void *alloc_preferred_zeroed(size_t size)
 {
     return heap_caps_calloc_prefer(
@@ -135,7 +134,6 @@ static void *alloc_preferred_zeroed(size_t size)
         MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT,
         MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
 }
-#endif
 
 static void log_heap_state(const char *stage)
 {
@@ -1974,7 +1972,7 @@ static bool fetch_token_server_credentials(
 {
     esp_http_client_handle_t client = NULL;
     char *body = NULL;
-    http_response_buffer_t response = {};
+    http_response_buffer_t *response = NULL;
     bool ok = false;
 
     if (credentials == NULL) {
@@ -1982,6 +1980,16 @@ static bool fetch_token_server_credentials(
     }
     memset(credentials, 0, sizeof(*credentials));
     init_token_server_fetch_diag(diag);
+
+    response = (http_response_buffer_t *)alloc_preferred_zeroed(sizeof(*response));
+    if (response == NULL) {
+        ESP_LOGE(TAG, "Failed to allocate token server response buffer");
+        if (diag != NULL) {
+            diag->result = TOKEN_SERVER_FETCH_RESULT_TRANSPORT;
+            set_token_server_fetch_error_text(diag, "response_buffer_alloc_failed");
+        }
+        return false;
+    }
 
     if (!build_token_server_request_body(&body)) {
         ESP_LOGE(TAG, "Failed to build token server request body");
@@ -1997,7 +2005,7 @@ static bool fetch_token_server_credentials(
         .method = HTTP_METHOD_POST,
         .timeout_ms = CONFIG_LK_EXAMPLE_TOKEN_SERVER_TIMEOUT_MS,
         .event_handler = http_response_buffer_event_handler,
-        .user_data = &response,
+        .user_data = response,
     };
     client = esp_http_client_init(&config);
     if (client == NULL) {
@@ -2026,7 +2034,7 @@ static bool fetch_token_server_credentials(
 
     int status = esp_http_client_get_status_code(client);
     if (status < 200 || status >= 300) {
-        ESP_LOGE(TAG, "Token server returned HTTP %d body=%s", status, response.body);
+        ESP_LOGE(TAG, "Token server returned HTTP %d body=%s", status, response->body);
         if (diag != NULL) {
             diag->http_status = status;
             if (status == 401 || status == 403) {
@@ -2036,12 +2044,12 @@ static bool fetch_token_server_credentials(
             } else {
                 diag->result = TOKEN_SERVER_FETCH_RESULT_HTTP_SERVER_ERROR;
             }
-            set_token_server_fetch_error_text(diag, response.body);
+            set_token_server_fetch_error_text(diag, response->body);
         }
         goto cleanup;
     }
 
-    ok = parse_token_server_response(response.body, credentials, diag);
+    ok = parse_token_server_response(response->body, credentials, diag);
 
 cleanup:
     if (client != NULL) {
@@ -2049,6 +2057,9 @@ cleanup:
     }
     if (body != NULL) {
         cJSON_free(body);
+    }
+    if (response != NULL) {
+        free(response);
     }
     return ok;
 }
@@ -2100,6 +2111,11 @@ static void token_server_connect_task(void *arg)
     token_server_fetch_diag_t diag = {};
 
     log_heap_state("token-task-start");
+    ESP_LOGI(TAG,
+        "Token connect task start: generation=%" PRIu32 " delay_ms=%" PRIu32 " stack_hwm=%" PRIu32,
+        generation,
+        delay_ms,
+        (uint32_t)uxTaskGetStackHighWaterMark(NULL));
     while (!runtime_is_stop_requested()) {
         if (!runtime_is_current_generation(generation)) {
             ESP_LOGI(TAG, "Skip stale token connect task generation=%" PRIu32, generation);

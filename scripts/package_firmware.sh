@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
-DEFAULT_SCENARIO="dev-chat"
+DEFAULT_SCENARIO="dev-token"
 DEFAULT_DIST_DIR="${PROJECT_DIR}/dist"
 DEFAULT_ENV_FILE="${PROJECT_DIR}/configs/livekit.local.env"
 DEFAULT_SCENARIO_DIR="${PROJECT_DIR}/configs/scenarios"
@@ -15,7 +15,7 @@ Usage:
   scripts/package_firmware.sh [scenario]
 
 Examples:
-  bash scripts/package_firmware.sh dev-chat
+  bash scripts/package_firmware.sh dev-token
   bash scripts/package_firmware.sh dev-uplink-ws
   bash scripts/package_firmware.sh prod-standby
   bash scripts/package_firmware.sh release-token

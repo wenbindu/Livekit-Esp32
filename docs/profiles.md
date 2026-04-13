@@ -31,20 +31,12 @@ Recommended toggles:
 
 Recommended scenarios:
 
-- `dev-chat`
-- `debug-jwt`
+- `dev-token`
 - `dev-uplink-ws`
 - `dev-audio-ws`
-- `dev-uplink-only`
 
+All development scenarios in this repo use `AUTH_MODE=token_server`.
 For the dual-path WAV capture workflow, see `docs/debug-audio.md`.
-For the lighter device-side JWT workflow, see `docs/debug-jwt.md`.
-
-Use `debug-jwt` when:
-
-- the board cannot reach your token server
-- you want device-side JWT auth
-- you do not want debug audio websocket upload overhead
 
 ## Production Profile
 

@@ -22,11 +22,12 @@ This keeps code review focused on real firmware changes while still producing di
 
 ## Recommended Scenarios
 
-### `dev-chat`
+### `dev-token`
 
 Use when the goal is normal daily firmware debugging.
 
 - `PROFILE=dev`
+- `AUTH_MODE=token_server`
 - no debug uplink export
 - immediate join flow
 
@@ -35,6 +36,7 @@ Use when the goal is normal daily firmware debugging.
 Use when checking processed uplink audio on a desktop receiver.
 
 - `PROFILE=dev`
+- `AUTH_MODE=token_server`
 - `ENABLE_DEBUG_UPLINK_WS=1`
 - full chat still enabled
 
@@ -43,6 +45,7 @@ Use when checking processed uplink audio on a desktop receiver.
 Use when checking both processed microphone uplink and rendered AI downlink on a desktop receiver.
 
 - `PROFILE=dev`
+- `AUTH_MODE=token_server`
 - `ENABLE_DEBUG_UPLINK_WS=1`
 - `ENABLE_DEBUG_DOWNLINK_WS=1`
 - full chat still enabled
@@ -52,34 +55,12 @@ Detailed workflow:
 
 - `docs/debug-audio.md`
 
-### `debug-jwt`
-
-Use when you want a lighter development firmware:
-
-- `PROFILE=dev`
-- `AUTH_MODE=device_jwt`
-- no debug uplink export
-- no debug downlink export
-- immediate join flow
-- lower local debug overhead than `dev-audio-ws`
-
-Detailed workflow:
-
-- `docs/debug-jwt.md`
-
-### `dev-uplink-only`
-
-Use when isolating microphone, AEC, AGC, and uplink processing.
-
-- `PROFILE=dev`
-- `ENABLE_DEBUG_UPLINK_WS=1`
-- `LOCAL_AUDIO_UPLINK_ONLY=1`
-
 ### `prod-standby`
 
 Use for production-like packaging.
 
 - `PROFILE=prod`
+- `AUTH_MODE=token_server`
 - no debug uplink export
 - enter standby first
 - join only after user action
@@ -101,13 +82,7 @@ Use for the actual release firmware that keeps LiveKit secrets off the device.
 Build and flash with a scenario:
 
 ```bash
-SCENARIO=dev-chat bash scripts/project.sh flash-monitor
-```
-
-Switch to lower-overhead device JWT debugging:
-
-```bash
-SCENARIO=debug-jwt bash scripts/project.sh flash-monitor
+SCENARIO=dev-token bash scripts/project.sh flash-monitor
 ```
 
 Switch to processed uplink debugging:
@@ -157,13 +132,7 @@ bash scripts/package_firmware.sh list
 Produce a distributable firmware folder:
 
 ```bash
-bash scripts/package_firmware.sh dev-chat
-```
-
-Example lighter device-JWT debug package:
-
-```bash
-bash scripts/package_firmware.sh debug-jwt
+bash scripts/package_firmware.sh dev-token
 ```
 
 Example debug-audio package:
@@ -198,10 +167,12 @@ Included files:
 Keep all real LiveKit secrets only in:
 
 - `configs/livekit.local.env`
+- `configs/token_server.local.env`
 
 Do not place real credentials in:
 
 - `configs/livekit.local.env.example`
+- `configs/token_server.local.env.example`
 - scenario files
 - tracked Markdown docs
 
@@ -209,19 +180,12 @@ Do not place real credentials in:
 
 The ignored local env can safely keep:
 
-- `LIVEKIT_URL`
-- `LIVEKIT_API_KEY`
-- `LIVEKIT_API_SECRET`
 - `TOKEN_SERVER_URL`
 - `DEBUG_UPLINK_WS_URL`
 - `DEBUG_DOWNLINK_WS_URL`
 
-`debug-jwt` expects these local secrets to be present:
+Keep token-server runtime secrets in:
 
-- `LIVEKIT_URL`
-- `LIVEKIT_API_KEY`
-- `LIVEKIT_API_SECRET`
+- `configs/token_server.local.env`
 
-Use `AUTH_MODE=device_jwt` only when the board cannot reach your token server and you accept embedding the secret into the dev firmware.
-
-For normal dev and production packaging, prefer `AUTH_MODE=token_server`.
+For normal dev and production packaging, all shipped scenarios use `AUTH_MODE=token_server`.
