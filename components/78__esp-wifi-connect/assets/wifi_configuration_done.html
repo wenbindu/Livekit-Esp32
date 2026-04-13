@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Restarting Device</title>
+    <style>
+        :root {
+            --bg: #edf3f8;
+            --text: #102033;
+            --muted: #65758a;
+            --accent: #0a84ff;
+            --success: #0f9d58;
+            --panel: rgba(255, 255, 255, 0.92);
+            --border: rgba(27, 45, 67, 0.08);
+            --shadow: 0 24px 60px rgba(24, 39, 75, 0.16);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            padding: 24px;
+            color: var(--text);
+            font-family: "Avenir Next", "Segoe UI", "Helvetica Neue", Helvetica, sans-serif;
+            background:
+                radial-gradient(circle at top left, rgba(10, 132, 255, 0.16), transparent 26%),
+                radial-gradient(circle at bottom right, rgba(15, 157, 88, 0.14), transparent 24%),
+                linear-gradient(180deg, #f8fbfd 0%, var(--bg) 100%);
+        }
+
+        .card {
+            width: min(420px, 100%);
+            border: 1px solid var(--border);
+            border-radius: 28px;
+            background: var(--panel);
+            box-shadow: var(--shadow);
+            text-align: center;
+            padding: 34px 28px;
+        }
+
+        .badge {
+            width: 76px;
+            height: 76px;
+            margin: 0 auto 20px;
+            border-radius: 999px;
+            display: grid;
+            place-items: center;
+            background: rgba(15, 157, 88, 0.12);
+            color: var(--success);
+        }
+
+        .badge svg {
+            width: 34px;
+            height: 34px;
+        }
+
+        h1 {
+            margin: 0 0 10px;
+            font-size: 28px;
+            line-height: 1.05;
+            letter-spacing: -0.03em;
+        }
+
+        p {
+            margin: 0;
+            color: var(--muted);
+            font-size: 15px;
+            line-height: 1.65;
+        }
+
+        .countdown {
+            width: 108px;
+            height: 108px;
+            margin: 24px auto 0;
+            border-radius: 999px;
+            display: grid;
+            place-items: center;
+            border: 1px solid rgba(10, 132, 255, 0.18);
+            background:
+                radial-gradient(circle at 30% 28%, rgba(10, 132, 255, 0.14), transparent 52%),
+                linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(240, 247, 252, 0.94));
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+        }
+
+        .countdown-value {
+            font-size: 42px;
+            line-height: 1;
+            font-weight: 800;
+            letter-spacing: -0.04em;
+            color: var(--accent);
+        }
+
+        .countdown-label {
+            margin-top: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+
+        .status {
+            margin-top: 22px;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            border-radius: 999px;
+            background: rgba(10, 132, 255, 0.08);
+            color: var(--accent);
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .pulse {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--accent);
+            animation: pulse 1.2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(0.85);
+                opacity: 0.55;
+            }
+            50% {
+                transform: scale(1.12);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <section class="card">
+        <div class="badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M20 6 9 17l-5-5"></path>
+            </svg>
+        </div>
+        <h1>Wi-Fi saved.</h1>
+        <p>The device will leave setup mode and reconnect using the saved Wi-Fi in <span id="countdownInline">3</span> seconds.</p>
+        <div class="countdown" aria-hidden="true">
+            <div>
+                <div class="countdown-value" id="countdownValue">3</div>
+                <div class="countdown-label">seconds</div>
+            </div>
+        </div>
+        <div class="status">
+            <span class="pulse"></span>
+            <span id="statusText">Closing setup mode in 3s</span>
+        </div>
+    </section>
+
+    <script>
+        window.addEventListener('load', function() {
+            const countdownValue = document.getElementById('countdownValue');
+            const countdownInline = document.getElementById('countdownInline');
+            const statusText = document.getElementById('statusText');
+            let remaining = 3;
+            let exitTriggered = false;
+
+            function updateCountdown() {
+                countdownValue.textContent = String(remaining);
+                countdownInline.textContent = String(remaining);
+                statusText.textContent = 'Closing setup mode in ' + remaining + 's';
+            }
+
+            function exitSetupMode() {
+                if (exitTriggered) {
+                    return;
+                }
+
+                exitTriggered = true;
+                statusText.textContent = 'Restarting device...';
+                fetch('/exit', {
+                    method: 'POST',
+                    cache: 'no-store',
+                    keepalive: true,
+                }).catch(function() {});
+            }
+
+            updateCountdown();
+
+            const timer = setInterval(function() {
+                remaining -= 1;
+                updateCountdown();
+
+                if (remaining <= 1) {
+                    clearInterval(timer);
+                    window.setTimeout(function() {
+                        statusText.textContent = 'Restarting device...';
+                        exitSetupMode();
+                    }, 180);
+                }
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

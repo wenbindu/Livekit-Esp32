@@ -1,0 +1,239 @@
+# livekit-esp32s3
+
+[English](README.md) | 简体中文
+
+`livekit-esp32s3` 是一个面向 `lichuang_esp32s3` 开发板的独立 ESP-IDF 项目。它保留了力创板的音频、配网、LCD 显示和 LiveKit 接入逻辑，并整理成适合公开开源发布的结构。
+
+## 项目能力
+
+- 让 ESP32-S3 设备接入 LiveKit 房间
+- 采集麦克风音频并以 Opus 发布
+- 订阅远端音频并在板载喇叭播放
+- 提供轻量级 Wi-Fi 配网页面
+- 保留力创板配套的 UI、音频处理和板级适配
+
+## 目录结构
+
+- `main/`：主固件逻辑、LiveKit 接入、UI、配网、板级 glue code
+- `components/78__esp-wifi-connect`：本地 vendored 的配网页面组件
+- `components/78__xiaozhi-fonts`：本地 vendored 的字体和表情资源
+- `configs/`：板级默认配置、dev/prod profile、本地配置样例
+- `configs/scenarios/`：不同使用场景的 overlay，例如 `dev-chat`、`debug-jwt`、`dev-audio-ws`、`release-token`
+- `docs/`：调试、打包、模式说明文档
+- `scripts/project.sh`：配置、编译、烧录、串口监控入口
+- `scripts/package_firmware.sh`：按场景打包固件
+- `scripts/token_server.py`：本地或远端 token server
+- `scripts/debug_uplink_ws_server.py`：开发阶段接收调试音频并保存为 WAV
+
+## 开源安全说明
+
+真实密钥只能放在：
+
+- `configs/livekit.local.env`
+
+这个文件已经被 `.gitignore` 忽略，不会进入仓库。
+
+可以提交到仓库的只有样例文件：
+
+- `configs/livekit.local.env.example`
+
+注意：
+
+- 推荐使用 `AUTH_MODE=token_server`
+- `AUTH_MODE=device_jwt` 仅适合开发调试，会把 `LIVEKIT_API_SECRET` 写进生成的固件
+- 不要把真实的 API key、secret、token、局域网 IP 写进 scenario 文件、README 或默认配置
+
+## 当前测试环境
+
+当前仓库的整理基于以下环境：
+
+- ESP-IDF `v5.5.3`
+- target `esp32s3`
+- board `lichuang_esp32s3`
+- 使用 ESP-IDF 自带 Python 环境
+
+## 开发环境搭建
+
+### 1. 安装 ESP-IDF
+
+示例流程：
+
+```bash
+git clone https://github.com/espressif/esp-idf.git
+cd esp-idf
+git checkout v5.5.3
+bash install.sh
+. ./export.sh
+idf.py --version
+```
+
+可选验证：
+
+```bash
+cd examples/get-started/hello_world
+idf.py build
+```
+
+### 2. 克隆本项目
+
+```bash
+git clone <your-repo-url> livekit-esp32s3
+cd livekit-esp32s3
+```
+
+### 3. 创建本地配置文件
+
+```bash
+cp configs/livekit.local.env.example configs/livekit.local.env
+```
+
+然后编辑 `configs/livekit.local.env`。
+
+不同鉴权模式所需字段不同：
+
+- `token_server`：需要 `TOKEN_SERVER_URL`；token server 自身再读取 `LIVEKIT_URL`、`LIVEKIT_API_KEY`、`LIVEKIT_API_SECRET`
+- `device_jwt`：需要 `LIVEKIT_URL`、`LIVEKIT_API_KEY`、`LIVEKIT_API_SECRET`
+- `sandbox`：需要 `LIVEKIT_SANDBOX_ID`
+- `static_token`：需要 `LIVEKIT_URL`、`LIVEKIT_TOKEN`
+
+常用 token-server 参数：
+
+- `TOKEN_SERVER_RETRY_DELAY_MS`
+- `TOKEN_SERVER_AUTH_MAX_FAILURES`
+
+### 4. 编译与烧录
+
+日常聊天开发固件：
+
+```bash
+SCENARIO=dev-chat bash scripts/project.sh flash-monitor
+```
+
+轻量化 `device_jwt` 调试固件：
+
+```bash
+SCENARIO=debug-jwt bash scripts/project.sh flash-monitor
+```
+
+双向音频导出调试固件：
+
+```bash
+SCENARIO=dev-audio-ws bash scripts/project.sh flash-monitor
+```
+
+发布版 token-server 固件：
+
+```bash
+SCENARIO=release-token bash scripts/project.sh flash-monitor
+```
+
+## 场景配置模型
+
+本项目不使用 `dev/prod` 双分支。
+
+而是使用四层配置：
+
+1. board 默认层
+2. profile 默认层
+3. scenario overlay
+4. 本地 env
+
+常用场景：
+
+- `dev-chat`：默认开发聊天固件
+- `debug-jwt`：不上传 debug audio，设备本地生成 JWT，开发开销更低
+- `dev-uplink-ws`：导出处理后的上行音频
+- `dev-audio-ws`：同时导出上行和下行音频，用于 WAV 分析
+- `dev-uplink-only`：只做本地收音链路排查
+- `prod-standby`：更接近生产模式，先待机再进入聊天
+- `release-token`：发布版固件，JWT 在 server 侧签发，设备端只取 token 并自动刷新
+
+更多说明见：
+
+- `docs/profiles.md`
+- `docs/firmware-packaging.md`
+- `docs/debug-audio.md`
+- `docs/debug-jwt.md`
+- `docs/release-token.md`
+
+## 力创开发板注意事项
+
+当前仓库主要适配力创 ESP32-S3 开发板。
+
+- 默认 board 是 `lichuang_esp32s3`
+- 一般通过 Type-C 暴露串口，macOS 下通常是 `/dev/cu.usbmodem*`
+- target 必须是 `esp32s3`
+- BOOT 键用于进入配网或切换聊天状态
+- 当前播放链路刻意保持应用层单声道 PCM，以适配单喇叭硬件
+- 如果保存的 Wi-Fi 无法连接，固件应回退到配网流程
+
+## Token Server
+
+推荐用于日常开发和生产环境：
+
+```bash
+python3 scripts/token_server.py --env-file configs/livekit.local.env
+```
+
+如果你希望用 `nohup` 方式后台运行，并自动管理 PID 和日志：
+
+```bash
+bash scripts/token_server_ctl.sh start
+```
+
+查看状态或停止：
+
+```bash
+bash scripts/token_server_ctl.sh status
+bash scripts/token_server_ctl.sh stop
+```
+
+如果你要使用正式发布流程，也就是 server 签发 JWT、设备端自动换 token、多次鉴权失败后显示 `AUTH EXPIRED`，请看：
+
+- `docs/release-token.md`
+
+如果设备网络无法访问本地 token server，可临时使用 `SCENARIO=debug-jwt`。
+
+## Debug-Audio 工作流
+
+启动桌面端接收器：
+
+```bash
+bash scripts/debug_audio_ws_start.sh
+```
+
+停止接收器：
+
+```bash
+bash scripts/debug_audio_ws_stop.sh
+```
+
+生成的 WAV 文件会写入 `debug_audio_ws/`，该目录已被 gitignore。
+
+## 固件打包
+
+列出所有内置场景：
+
+```bash
+bash scripts/package_firmware.sh list
+```
+
+打包某个场景：
+
+```bash
+bash scripts/package_firmware.sh dev-chat
+```
+
+示例：
+
+```bash
+bash scripts/package_firmware.sh debug-jwt
+bash scripts/package_firmware.sh dev-audio-ws
+bash scripts/package_firmware.sh release-token
+```
+
+## 实际使用建议
+
+- LiveKit Cloud 是否可达仍然取决于开发板所处网络
+- 如果网页端也无法和 agent 对话，应先查 agent 日志，不要优先怀疑固件
+- 生产环境优先使用 token server，不要把 API secret 放到设备端
