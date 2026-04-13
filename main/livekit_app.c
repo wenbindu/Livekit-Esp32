@@ -46,6 +46,9 @@ static void on_state_changed(livekit_connection_state_t state, void *ctx);
 static void on_room_info(const livekit_room_info_t *info, void *ctx);
 static void on_participant_info(const livekit_participant_info_t *info, void *ctx);
 static void on_data_received(const livekit_data_received_t *data, void *ctx);
+#if CONFIG_LK_EXAMPLE_USE_TOKEN_SERVER
+static bool schedule_token_server_connect_task(uint32_t delay_ms);
+#endif
 
 #define TOKEN_SERVER_RESPONSE_MAX 8192
 #define TOKEN_SERVER_URL_MAX 256
@@ -1216,6 +1219,25 @@ static void token_server_show_auth_expired(void)
     lichuang_ui_show_message("LIVEKIT", "AUTH EXPIRED", "CONTACT ADMIN", ":(");
 }
 
+static bool token_server_failure_should_reconnect(livekit_failure_reason_t reason)
+{
+    switch (reason) {
+    case LIVEKIT_FAILURE_REASON_NONE:
+    case LIVEKIT_FAILURE_REASON_BAD_TOKEN:
+    case LIVEKIT_FAILURE_REASON_UNAUTHORIZED:
+    case LIVEKIT_FAILURE_REASON_DUPLICATE_IDENTITY:
+    case LIVEKIT_FAILURE_REASON_PARTICIPANT_REMOVED:
+    case LIVEKIT_FAILURE_REASON_ROOM_DELETED:
+    case LIVEKIT_FAILURE_REASON_ROOM_CLOSED:
+    case LIVEKIT_FAILURE_REASON_SIP_USER_UNAVAILABLE:
+    case LIVEKIT_FAILURE_REASON_SIP_USER_REJECTED:
+    case LIVEKIT_FAILURE_REASON_SIP_TRUNK_FAILURE:
+        return false;
+    default:
+        return true;
+    }
+}
+
 static bool token_server_auth_failure_should_retry(uint8_t failure_count)
 {
     if (failure_count >= CONFIG_LK_EXAMPLE_TOKEN_SERVER_AUTH_MAX_FAILURES) {
@@ -1230,6 +1252,37 @@ static bool token_server_auth_failure_should_retry(uint8_t failure_count)
     char detail[48];
     snprintf(detail, sizeof(detail), "RETRY %u/%u", failure_count, (unsigned)CONFIG_LK_EXAMPLE_TOKEN_SERVER_AUTH_MAX_FAILURES);
     token_server_show_retry_message("REFRESHING TOKEN", detail);
+    return true;
+}
+
+static bool token_server_schedule_reconnect(livekit_failure_reason_t reason, uint32_t delay_ms)
+{
+    char detail[48];
+    const char *reason_text = livekit_failure_reason_str(reason);
+
+    if (!token_server_failure_should_reconnect(reason)) {
+        return false;
+    }
+
+    if (!schedule_token_server_connect_task(delay_ms)) {
+        ESP_LOGW(TAG,
+            "Token reconnect task already scheduled or unavailable: reason=%s",
+            reason_text);
+        return true;
+    }
+
+    if (delay_ms == 0) {
+        snprintf(detail, sizeof(detail), "%s NOW", reason_text);
+    } else {
+        snprintf(detail, sizeof(detail), "%s IN %lus",
+            reason_text,
+            (unsigned long)((delay_ms + 999U) / 1000U));
+    }
+    token_server_show_retry_message("RECONNECTING", detail);
+    ESP_LOGW(TAG,
+        "Scheduling token-server reconnect: reason=%s delay_ms=%" PRIu32,
+        reason_text,
+        delay_ms);
     return true;
 }
 #endif
@@ -2325,6 +2378,9 @@ static void on_state_changed(livekit_connection_state_t state, void *ctx)
         ESP_ERROR_CHECK_WITHOUT_ABORT(lichuang_ui_resume());
 #if CONFIG_LK_EXAMPLE_USE_TOKEN_SERVER
         if (handle_token_server_room_auth_failure(reason)) {
+            break;
+        }
+        if (token_server_schedule_reconnect(reason, CONFIG_LK_EXAMPLE_TOKEN_SERVER_RETRY_DELAY_MS)) {
             break;
         }
         runtime_clear_token_refresh_pending();

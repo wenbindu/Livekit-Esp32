@@ -106,7 +106,7 @@ config LK_EXAMPLE_LIVEKIT_AGENT_RECV_TIMEOUT_MS
 
 config LK_EXAMPLE_LIVEKIT_NO_AUTO_RECONNECT
     bool "Disable esp_peer auto reconnect"
-    default y
+    default n
 
 config LK_EXAMPLE_LIVEKIT_KEEP_ROLE
     bool "Keep ICE role across reconnects"
