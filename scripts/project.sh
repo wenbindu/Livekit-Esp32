@@ -9,6 +9,7 @@ DEFAULT_PROFILE="dev"
 GENERATED_DEFAULTS="sdkconfig.defaults.generated"
 CONFIG_STAMP_FILE=".project_config.stamp"
 DEFAULT_ENV_FILE="${PROJECT_DIR}/configs/livekit.local.env"
+DEFAULT_BRANCH_ENV_FILE="${PROJECT_DIR}/configs/branch.defaults.env"
 DEFAULT_SCENARIO_DIR="${PROJECT_DIR}/configs/scenarios"
 
 usage() {
@@ -30,9 +31,14 @@ Environment:
   BOARD               Board config name, default: lichuang_esp32s3
   PROFILE             Build profile name, default: dev
   CONFIG_ENV_FILE     Path to local env file, default: configs/livekit.local.env
-  SCENARIO            Optional scenario overlay name from configs/scenarios/*.env
-  SCENARIO_ENV_FILE   Optional explicit scenario env file path
+  SCENARIO            Legacy optional scenario overlay name from configs/scenarios/*.env
+  SCENARIO_ENV_FILE   Legacy explicit scenario env file path
   ESPPORT             Override auto-detected serial port
+
+Branch Defaults:
+  configs/branch.defaults.env is auto-loaded after the local env file.
+  Each firmware branch owns this tracked file, so switching git branch switches
+  the default firmware path without requiring SCENARIO.
 
 Config env keys:
   AUTH_MODE=device_jwt|token_server|sandbox|static_token
@@ -109,6 +115,7 @@ load_optional_env() {
 load_config_env() {
     local env_file="${CONFIG_ENV_FILE:-${DEFAULT_ENV_FILE}}"
     load_optional_env "${env_file}"
+    load_optional_env "${DEFAULT_BRANCH_ENV_FILE}"
 
     local scenario_env_file="${SCENARIO_ENV_FILE:-}"
     if [[ -z "${scenario_env_file}" && -n "${SCENARIO:-}" ]]; then

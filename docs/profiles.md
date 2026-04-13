@@ -2,19 +2,18 @@
 
 ## Recommended Build Strategy
 
-Do not use `git branch` as the environment switch for `dev` vs `prod`.
+Use `git branch` for firmware-path switching, and keep profile semantics inside
+the branch-owned defaults.
 
-Use one branch and three config layers:
+Common layers:
 
 - `configs/sdkconfig.defaults.board.<board>` for hardware
 - `configs/sdkconfig.defaults.<profile>` for behavior
+- `configs/branch.defaults.env` for branch-owned firmware defaults
 - `configs/livekit.local.env` for secrets and local endpoints
 
-For use-case-specific firmware variants, add a fourth layer:
-
-- `configs/scenarios/*.env`
-
-This avoids branch drift, makes CI simpler, and keeps firmware diffs focused on code instead of environment churn.
+Mainline firmware stays on `main`. Dedicated firmware variants live on their own
+branches.
 
 ## Development Profile
 
@@ -29,13 +28,13 @@ Recommended toggles:
 - `AUTH_MODE=token_server`
 - `START_IN_STANDBY=0`
 
-Recommended scenarios:
+Recommended branches:
 
-- `dev-token`
-- `dev-uplink-ws`
-- `dev-audio-ws`
+- `main`
+- `firmware/dev-uplink-ws`
+- `firmware/dev-audio-ws`
 
-All development scenarios in this repo use `AUTH_MODE=token_server`.
+All development branches in this repo use `AUTH_MODE=token_server`.
 For the dual-path WAV capture workflow, see `docs/debug-audio.md`.
 
 ## Production Profile
@@ -52,10 +51,10 @@ Recommended toggles:
 - `AUTH_MODE=token_server`
 - `START_IN_STANDBY=1`
 
-Recommended scenario:
+Recommended branches:
 
-- `prod-standby`
-- `release-token`
+- `firmware/prod-standby`
+- `firmware/release-token`
 
 ## Standby Flow
 
@@ -75,4 +74,4 @@ This is lighter and less error-prone than immediately connecting to a room after
 
 If you later add a dedicated wake/power button and stable resume flow, move from standby to true deep sleep. Until then, standby is the safer open-source default because it preserves a simpler recovery path and avoids more board-specific power management code.
 
-For packaging commands and the scenario matrix, see `docs/firmware-packaging.md`.
+For packaging commands and the branch map, see `docs/firmware-packaging.md`.

@@ -17,11 +17,10 @@
 - `main/`：主固件逻辑、LiveKit 接入、UI、配网、板级 glue code
 - `components/78__esp-wifi-connect`：本地 vendored 的配网页面组件
 - `components/78__xiaozhi-fonts`：本地 vendored 的字体和表情资源
-- `configs/`：板级默认配置、dev/prod profile、本地配置样例文件
-- `configs/scenarios/`：不同使用场景的 overlay，例如 `dev-token`、`dev-audio-ws`、`release-token`
+- `configs/`：板级默认配置、分支自带固件默认配置、本地配置样例文件
 - `docs/`：调试、打包、模式说明文档
 - `scripts/project.sh`：配置、编译、烧录、串口监控入口
-- `scripts/package_firmware.sh`：按场景打包固件
+- `scripts/package_firmware.sh`：按当前 git branch 打包固件
 - `scripts/token_server.py`：本地或远端 token server
 - `scripts/debug_uplink_ws_server.py`：开发阶段接收调试音频并保存为 WAV
 
@@ -41,8 +40,8 @@
 
 注意：
 
-- 仓库当前保留的固件场景统一使用 `AUTH_MODE=token_server`
-- 不要把真实的 API key、secret、token、局域网 IP 写进 scenario 文件、README 或默认配置
+- 仓库当前保留的固件 branch 统一使用 `AUTH_MODE=token_server`
+- 不要把真实的 API key、secret、token、局域网 IP 写进 branch 默认配置、README 或默认配置
 
 ## 当前测试环境
 
@@ -90,9 +89,8 @@ cp configs/livekit.local.env.example configs/livekit.local.env
 
 然后编辑 `configs/livekit.local.env`。
 
-设备侧至少需要这些字段：
+机器本地至少需要这些字段：
 
-- `AUTH_MODE=token_server`
 - `TOKEN_SERVER_URL`
 - `LIVEKIT_ROOM`
 - `LIVEKIT_PARTICIPANT`
@@ -108,47 +106,48 @@ token server 运行时密钥单独放在：
 
 - `configs/token_server.local.env`
 
+受 git 管理的固件默认配置放在：
+
+- `configs/branch.defaults.env`
+
+这个文件属于当前 branch。切换 branch，就切换默认固件行为。
+
 ### 4. 编译与烧录
 
-日常开发固件：
+`main` 分支主线固件：
 
 ```bash
-SCENARIO=dev-token bash scripts/project.sh flash-monitor
+bash scripts/project.sh flash-monitor
 ```
 
 双向音频导出调试固件：
 
 ```bash
-SCENARIO=dev-audio-ws bash scripts/project.sh flash-monitor
+git switch firmware/dev-audio-ws
+bash scripts/project.sh flash-monitor
 ```
 
 发布版 token-server 固件：
 
 ```bash
-SCENARIO=release-token bash scripts/project.sh flash-monitor
+git switch firmware/release-token
+bash scripts/project.sh flash-monitor
 ```
 
-## 场景配置模型
+## Branch 管理模型
 
-本项目不使用 `dev/prod` 双分支。
+主线固件保留在 `main`。
 
-而是使用四层配置：
+专用固件分支有：
 
-1. board 默认层
-2. profile 默认层
-3. scenario overlay
-4. 本地 env
-
-常用场景：
-
-- `dev-token`：默认开发聊天固件，统一走 token server
-- `dev-uplink-ws`：导出处理后的上行音频
-- `dev-audio-ws`：同时导出上行和下行音频，用于 WAV 分析
-- `prod-standby`：更接近生产模式，先待机再进入聊天
-- `release-token`：发布版固件，JWT 在 server 侧签发，设备端只取 token 并自动刷新
+- `firmware/dev-uplink-ws`：导出处理后的上行音频
+- `firmware/dev-audio-ws`：同时导出上行和下行音频，用于 WAV 分析
+- `firmware/prod-standby`：更接近生产模式的待机流程
+- `firmware/release-token`：偏发布用途的待机固件
 
 更多说明见：
 
+- `docs/branch-workflow.md`
 - `docs/profiles.md`
 - `docs/firmware-packaging.md`
 - `docs/debug-audio.md`
@@ -214,23 +213,26 @@ bash scripts/debug_audio_ws_stop.sh
 
 ## 固件打包
 
-列出所有内置场景：
+查看当前 branch 的打包目标：
 
 ```bash
 bash scripts/package_firmware.sh list
 ```
 
-打包某个场景：
+打包当前 branch 固件：
 
 ```bash
-bash scripts/package_firmware.sh dev-token
+bash scripts/package_firmware.sh
 ```
 
 示例：
 
 ```bash
-bash scripts/package_firmware.sh dev-audio-ws
-bash scripts/package_firmware.sh release-token
+git switch firmware/dev-audio-ws
+bash scripts/package_firmware.sh
+
+git switch firmware/release-token
+bash scripts/package_firmware.sh
 ```
 
 ## 实际使用建议

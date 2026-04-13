@@ -1,155 +1,61 @@
 # Firmware Packaging
 
-## Single-Branch Rule
+## Packaging Rule
 
-Do not create separate git branches for `dev` and `prod` firmware.
+Package the firmware represented by the current git branch.
 
-Use one branch and four layers:
+Firmware behavior now comes from:
 
-1. `board`
-2. `profile`
-3. `scenario`
-4. `local env`
+1. `configs/sdkconfig.defaults.board.<board>`
+2. `configs/sdkconfig.defaults.<profile>`
+3. `configs/branch.defaults.env`
+4. `configs/livekit.local.env`
 
-This keeps code review focused on real firmware changes while still producing different firmware builds for different use cases.
+## Branch Map
 
-## Layer Responsibilities
+- `main`: normal daily firmware
+- `firmware/dev-uplink-ws`: processed uplink debug export
+- `firmware/dev-audio-ws`: uplink + downlink debug export
+- `firmware/prod-standby`: production-like standby behavior
+- `firmware/release-token`: release-oriented standby path
 
-- `configs/sdkconfig.defaults.board.<board>`: hardware-specific settings
-- `configs/sdkconfig.defaults.<profile>`: broad runtime posture such as `dev` vs `prod`
-- `configs/scenarios/*.env`: use-case behavior such as debug audio capture or standby
-- `configs/livekit.local.env`: machine-local secrets and endpoints
+## Commands
 
-## Recommended Scenarios
-
-### `dev-token`
-
-Use when the goal is normal daily firmware debugging.
-
-- `PROFILE=dev`
-- `AUTH_MODE=token_server`
-- no debug uplink export
-- immediate join flow
-
-### `dev-uplink-ws`
-
-Use when checking processed uplink audio on a desktop receiver.
-
-- `PROFILE=dev`
-- `AUTH_MODE=token_server`
-- `ENABLE_DEBUG_UPLINK_WS=1`
-- full chat still enabled
-
-### `dev-audio-ws`
-
-Use when checking both processed microphone uplink and rendered AI downlink on a desktop receiver.
-
-- `PROFILE=dev`
-- `AUTH_MODE=token_server`
-- `ENABLE_DEBUG_UPLINK_WS=1`
-- `ENABLE_DEBUG_DOWNLINK_WS=1`
-- full chat still enabled
-- this is the recommended `debug-audio` firmware variant
-
-Detailed workflow:
-
-- `docs/debug-audio.md`
-
-### `prod-standby`
-
-Use for production-like packaging.
-
-- `PROFILE=prod`
-- `AUTH_MODE=token_server`
-- no debug uplink export
-- enter standby first
-- join only after user action
-
-### `release-token`
-
-Use for the actual release firmware that keeps LiveKit secrets off the device.
-
-- `PROFILE=prod`
-- `AUTH_MODE=token_server`
-- no debug audio export
-- enter standby first
-- fetch a fresh token from the token server before room join
-- when the token is invalid or expired, fetch a new token and retry
-- after repeated auth failures, show `AUTH EXPIRED` on the device
-
-## Everyday Commands
-
-Build and flash with a scenario:
+Build and flash the current branch:
 
 ```bash
-SCENARIO=dev-token bash scripts/project.sh flash-monitor
+bash scripts/project.sh flash-monitor
 ```
 
-Switch to processed uplink debugging:
+Package the current branch:
 
 ```bash
-SCENARIO=dev-uplink-ws bash scripts/project.sh flash-monitor
+bash scripts/package_firmware.sh
 ```
 
-Switch to dual-path audio debugging:
-
-```bash
-SCENARIO=dev-audio-ws bash scripts/project.sh flash-monitor
-```
-
-Start the desktop WAV receiver:
-
-```bash
-bash scripts/debug_audio_ws_start.sh
-```
-
-Stop it:
-
-```bash
-bash scripts/debug_audio_ws_stop.sh
-```
-
-Build a production-like standby image:
-
-```bash
-SCENARIO=prod-standby bash scripts/project.sh build
-```
-
-Build the release token-server image:
-
-```bash
-SCENARIO=release-token bash scripts/project.sh build
-```
-
-## Packaging Commands
-
-List built-in scenarios:
+Inspect the current branch package identity:
 
 ```bash
 bash scripts/package_firmware.sh list
 ```
 
-Produce a distributable firmware folder:
-
-```bash
-bash scripts/package_firmware.sh dev-token
-```
-
 Example debug-audio package:
 
 ```bash
-bash scripts/package_firmware.sh dev-audio-ws
+git switch firmware/dev-audio-ws
+bash scripts/package_firmware.sh
 ```
 
 Example release package:
 
 ```bash
-bash scripts/package_firmware.sh release-token
+git switch firmware/release-token
+bash scripts/package_firmware.sh
 ```
 
-This is the recommended way to freeze a dedicated audio-debug firmware without touching the normal chat firmware path.
+Each package is written to:
 
-Each package is written to `dist/<timestamp>_<board>_<profile>_<scenario>/`.
+- `dist/<timestamp>_<board>_<profile>_<firmware_variant>/`
 
 Included files:
 
@@ -173,19 +79,5 @@ Do not place real credentials in:
 
 - `configs/livekit.local.env.example`
 - `configs/token_server.local.env.example`
-- scenario files
+- `configs/branch.defaults.env`
 - tracked Markdown docs
-
-## Current Development Setup
-
-The ignored local env can safely keep:
-
-- `TOKEN_SERVER_URL`
-- `DEBUG_UPLINK_WS_URL`
-- `DEBUG_DOWNLINK_WS_URL`
-
-Keep token-server runtime secrets in:
-
-- `configs/token_server.local.env`
-
-For normal dev and production packaging, all shipped scenarios use `AUTH_MODE=token_server`.

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-`release-token` is the production-oriented firmware scenario for `lichuang_esp32s3`.
+`firmware/release-token` is the production-oriented firmware branch for `lichuang_esp32s3`.
 
 It keeps the LiveKit API secret on the server side only:
 
@@ -14,9 +14,9 @@ It keeps the LiveKit API secret on the server side only:
 
 This is the recommended release path for devices you plan to ship or deploy outside your development desk.
 
-## Scenario File
+## Branch Defaults
 
-- `configs/scenarios/release-token.env`
+- `configs/branch.defaults.env`
 
 ## What It Enables
 
@@ -32,7 +32,6 @@ This is the recommended release path for devices you plan to ship or deploy outs
 Set device-side values in `configs/livekit.local.env`:
 
 ```env
-AUTH_MODE=token_server
 TOKEN_SERVER_URL=http://YOUR_SERVER_IP:8790/token
 TOKEN_SERVER_TIMEOUT_MS=5000
 TOKEN_SERVER_RETRY_DELAY_MS=3000
@@ -107,13 +106,15 @@ If the board looks idle right after boot, that is expected for `release-token`: 
 ## Build And Flash
 
 ```bash
-SCENARIO=release-token bash scripts/project.sh flash-monitor
+git switch firmware/release-token
+bash scripts/project.sh flash-monitor
 ```
 
 ## Package A Release Artifact
 
 ```bash
-bash scripts/package_firmware.sh release-token
+git switch firmware/release-token
+bash scripts/package_firmware.sh
 ```
 
 ## Why This Is The Default Auth Path

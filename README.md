@@ -17,11 +17,10 @@ English | [简体中文](README.zh-CN.md)
 - `main/`: firmware app, board glue, LiveKit integration, UI, Wi-Fi flow
 - `components/78__esp-wifi-connect`: vendored provisioning portal component
 - `components/78__xiaozhi-fonts`: vendored font and emoji assets
-- `configs/`: board/profile defaults plus local config examples
-- `configs/scenarios/`: scenario overlays such as `dev-token`, `dev-audio-ws`, and `release-token`
+- `configs/`: board/profile defaults, branch-owned firmware defaults, and local config examples
 - `docs/`: development and packaging notes
 - `scripts/project.sh`: configure/build/flash wrapper
-- `scripts/package_firmware.sh`: package scenario-specific firmware artifacts
+- `scripts/package_firmware.sh`: package the firmware represented by the current git branch
 - `scripts/token_server.py`: local or remote token service
 - `scripts/debug_uplink_ws_server.py`: desktop receiver for debug-audio WAV capture
 
@@ -41,8 +40,8 @@ contains placeholders only.
 
 Important:
 
-- shipped firmware scenarios in this repo use `AUTH_MODE=token_server`
-- Do not commit real tokens, API keys, or machine-local IPs into scenario files, Markdown docs, or tracked defaults.
+- all shipped firmware branches in this repo use `AUTH_MODE=token_server`
+- Do not commit real tokens, API keys, or machine-local IPs into branch defaults, Markdown docs, or tracked defaults.
 
 ## Tested Environment
 
@@ -90,9 +89,8 @@ cp configs/livekit.local.env.example configs/livekit.local.env
 
 Then edit `configs/livekit.local.env`.
 
-Minimum device-side fields:
+Minimum machine-local fields:
 
-- `AUTH_MODE=token_server`
 - `TOKEN_SERVER_URL`
 - `LIVEKIT_ROOM`
 - `LIVEKIT_PARTICIPANT`
@@ -108,47 +106,48 @@ Token-server runtime secrets live separately in:
 
 - `configs/token_server.local.env`
 
+Tracked firmware defaults live in:
+
+- `configs/branch.defaults.env`
+
+That file belongs to the current git branch. Switching branch switches the default firmware behavior.
+
 ### 4. Build And Flash
 
-Normal development firmware:
+Main branch firmware:
 
 ```bash
-SCENARIO=dev-token bash scripts/project.sh flash-monitor
+bash scripts/project.sh flash-monitor
 ```
 
-Dual-path debug-audio firmware:
+Dedicated debug-audio firmware:
 
 ```bash
-SCENARIO=dev-audio-ws bash scripts/project.sh flash-monitor
+git switch firmware/dev-audio-ws
+bash scripts/project.sh flash-monitor
 ```
 
 Release token-server firmware:
 
 ```bash
-SCENARIO=release-token bash scripts/project.sh flash-monitor
+git switch firmware/release-token
+bash scripts/project.sh flash-monitor
 ```
 
-## Scenario Model
+## Branch Model
 
-This repo does not use separate git branches for `dev` and `prod`.
+Mainline firmware stays on `main`.
 
-It uses four layers:
+Dedicated firmware branches are:
 
-1. board defaults
-2. profile defaults
-3. scenario overlay
-4. local env
-
-Useful scenarios:
-
-- `dev-token`: default daily development firmware using token-server auth
-- `dev-uplink-ws`: export processed uplink audio to a desktop receiver
-- `dev-audio-ws`: export both uplink and downlink audio for WAV inspection
-- `prod-standby`: production-like standby-first behavior
-- `release-token`: release firmware with server-side JWT signing and device-side token refresh
+- `firmware/dev-uplink-ws`: export processed uplink audio to a desktop receiver
+- `firmware/dev-audio-ws`: export both uplink and downlink audio for WAV inspection
+- `firmware/prod-standby`: production-like standby-first behavior
+- `firmware/release-token`: release-oriented standby path
 
 See:
 
+- `docs/branch-workflow.md`
 - `docs/profiles.md`
 - `docs/firmware-packaging.md`
 - `docs/debug-audio.md`
@@ -214,23 +213,26 @@ Generated WAV files are written under `debug_audio_ws/`, which is gitignored.
 
 ## Packaging
 
-List supported scenarios:
+Show the current branch-owned package target:
 
 ```bash
 bash scripts/package_firmware.sh list
 ```
 
-Package a scenario:
+Package the current branch firmware:
 
 ```bash
-bash scripts/package_firmware.sh dev-token
+bash scripts/package_firmware.sh
 ```
 
 Examples:
 
 ```bash
-bash scripts/package_firmware.sh dev-audio-ws
-bash scripts/package_firmware.sh release-token
+git switch firmware/dev-audio-ws
+bash scripts/package_firmware.sh
+
+git switch firmware/release-token
+bash scripts/package_firmware.sh
 ```
 
 ## Practical Notes

@@ -11,10 +11,10 @@ This is the recommended development-time audio debugging path for `lichuang_esp3
 
 ## Recommended Debug Firmware
 
-Use the dedicated debug-audio scenario:
+Use the dedicated debug-audio branch:
 
 ```bash
-SCENARIO=dev-audio-ws
+git switch firmware/dev-audio-ws
 ```
 
 This firmware keeps normal chat enabled and adds two lightweight debug exports:
@@ -25,13 +25,15 @@ This firmware keeps normal chat enabled and adds two lightweight debug exports:
 Build and flash it with:
 
 ```bash
-SCENARIO=dev-audio-ws bash scripts/project.sh flash-monitor
+git switch firmware/dev-audio-ws
+bash scripts/project.sh flash-monitor
 ```
 
 If you want a reusable firmware drop, package it with:
 
 ```bash
-bash scripts/package_firmware.sh dev-audio-ws
+git switch firmware/dev-audio-ws
+bash scripts/package_firmware.sh
 ```
 
 ## What Gets Captured
@@ -54,17 +56,17 @@ bash scripts/package_firmware.sh dev-audio-ws
 - source: rendered AI audio before speaker playback
 - position in pipeline: PCM headed into the render/playback path
 
-## Scenario
+## Branch Defaults
 
 Use:
 
 ```bash
-SCENARIO=dev-audio-ws
+git switch firmware/dev-audio-ws
 ```
 
-Scenario file:
+Branch-owned defaults:
 
-- `configs/scenarios/dev-audio-ws.env`
+- `configs/branch.defaults.env`
 
 This enables:
 
@@ -130,13 +132,15 @@ Generated files are gitignored.
 Build, flash, and monitor with:
 
 ```bash
-SCENARIO=dev-audio-ws bash scripts/project.sh flash-monitor
+git switch firmware/dev-audio-ws
+bash scripts/project.sh flash-monitor
 ```
 
 If you only need serial logs:
 
 ```bash
-SCENARIO=dev-audio-ws bash scripts/project.sh monitor
+git switch firmware/dev-audio-ws
+bash scripts/project.sh monitor
 ```
 
 ## Expected Serial Logs
@@ -171,7 +175,7 @@ This means `uplink_<ts>.wav` and `downlink_<ts>.wav` are intended to be analyzed
 ## Practical Workflow
 
 1. Start the local WS receiver with `bash scripts/debug_audio_ws_start.sh`.
-2. Flash `SCENARIO=dev-audio-ws`.
+2. Switch to `firmware/dev-audio-ws` and flash it.
 3. Wait for both websocket connections.
 4. Speak to the device for 20 to 30 seconds.
 5. Trigger an AI response long enough to exercise playback.
