@@ -7,14 +7,12 @@ DEFAULT_TARGET="current"
 DEFAULT_DIST_DIR="${PROJECT_DIR}/dist"
 DEFAULT_ENV_FILE="${PROJECT_DIR}/configs/livekit.local.env"
 DEFAULT_BRANCH_ENV_FILE="${PROJECT_DIR}/configs/branch.defaults.env"
-DEFAULT_SCENARIO_DIR="${PROJECT_DIR}/configs/scenarios"
 
 usage() {
     cat <<'EOF'
 Usage:
   scripts/package_firmware.sh
   scripts/package_firmware.sh list
-  scripts/package_firmware.sh [legacy-scenario]
 
 Examples:
   bash scripts/package_firmware.sh
@@ -22,7 +20,6 @@ Examples:
 
 Environment:
   CONFIG_ENV_FILE     Local env file, default: configs/livekit.local.env
-  SCENARIO_ENV_FILE   Legacy explicit scenario env file override
   DIST_DIR            Output directory, default: dist/
 
 Current workflow:
@@ -43,7 +40,7 @@ load_optional_env() {
     set +a
 }
 
-list_scenarios() {
+list_branches() {
     local branch_name
     branch_name="$(git -C "${PROJECT_DIR}" rev-parse --abbrev-ref HEAD 2>/dev/null || printf 'detached')"
     load_optional_env "${CONFIG_ENV_FILE:-${DEFAULT_ENV_FILE}}"
@@ -51,21 +48,6 @@ list_scenarios() {
     printf 'branch=%s\n' "${branch_name}"
     printf 'firmware_variant=%s\n' "${FIRMWARE_VARIANT:-${branch_name}}"
     printf 'profile=%s\n' "${PROFILE:-dev}"
-
-    local file
-    for file in "${DEFAULT_SCENARIO_DIR}"/*.env; do
-        [[ -e "${file}" ]] || continue
-        printf 'legacy:%s\n' "$(basename "${file}" .env)"
-    done | sort
-}
-
-resolve_scenario_file() {
-    local scenario="$1"
-    if [[ -n "${SCENARIO_ENV_FILE:-}" ]]; then
-        printf '%s\n' "${SCENARIO_ENV_FILE}"
-        return 0
-    fi
-    printf '%s/%s.env\n' "${DEFAULT_SCENARIO_DIR}" "${scenario}"
 }
 
 copy_if_exists() {
@@ -79,52 +61,33 @@ copy_if_exists() {
 main() {
     local command="${1:-${DEFAULT_TARGET}}"
     if [[ "${command}" == "list" ]]; then
-        list_scenarios
+        list_branches
         return 0
     fi
     if [[ "${command}" == "-h" || "${command}" == "--help" || "${command}" == "help" ]]; then
         usage
         return 0
     fi
+    if [[ "${command}" != "current" ]]; then
+        echo "Unknown packaging target: ${command}" >&2
+        echo "package_firmware.sh only packages the current git branch." >&2
+        return 1
+    fi
 
-    local scenario="${command}"
     local env_file="${CONFIG_ENV_FILE:-${DEFAULT_ENV_FILE}}"
-    local scenario_file=""
-    local legacy_scenario=0
 
     if [[ ! -f "${env_file}" ]]; then
         echo "Missing local env: ${env_file}" >&2
         echo "Copy configs/livekit.local.env.example first." >&2
         return 1
     fi
-    if [[ "${scenario}" != "current" ]]; then
-        scenario_file="$(resolve_scenario_file "${scenario}")"
-        if [[ ! -f "${scenario_file}" ]]; then
-            echo "Unknown packaging target: ${scenario}" >&2
-            echo "Use the current git branch, or pick one of the legacy scenario files:" >&2
-            list_scenarios >&2
-            return 1
-        fi
-        legacy_scenario=1
-    fi
 
     load_optional_env "${env_file}"
     load_optional_env "${DEFAULT_BRANCH_ENV_FILE}"
-    if [[ "${legacy_scenario}" == "1" ]]; then
-        load_optional_env "${scenario_file}"
-    fi
 
     local branch_name
     branch_name="$(git -C "${PROJECT_DIR}" rev-parse --abbrev-ref HEAD 2>/dev/null || printf 'detached')"
     local variant_name="${FIRMWARE_VARIANT:-${branch_name}}"
-    if [[ "${legacy_scenario}" == "1" ]]; then
-        variant_name="${scenario}"
-        export SCENARIO="${scenario}"
-        export SCENARIO_ENV_FILE="${scenario_file}"
-    else
-        unset SCENARIO || true
-        unset SCENARIO_ENV_FILE || true
-    fi
     export CONFIG_ENV_FILE="${env_file}"
 
     bash "${SCRIPT_DIR}/project.sh" configure
@@ -163,7 +126,6 @@ debug_uplink_wav=${ENABLE_DEBUG_UPLINK_WAV:-0}
 local_audio_uplink_only=${LOCAL_AUDIO_UPLINK_ONLY:-0}
 start_in_standby=${START_IN_STANDBY:-0}
 branch_defaults_file=${DEFAULT_BRANCH_ENV_FILE}
-scenario_env_file=${scenario_file}
 config_env_file=${env_file}
 generated_at=${timestamp}
 EOF
