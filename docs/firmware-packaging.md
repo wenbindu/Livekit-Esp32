@@ -14,10 +14,10 @@ Firmware behavior now comes from:
 ## Branch Map
 
 - `main`: normal daily firmware
-- `firmware/dev-uplink-ws`: processed uplink debug export
-- `firmware/dev-audio-ws`: uplink + downlink debug export
-- `firmware/prod-standby`: production-like standby behavior
-- `firmware/release-token`: release-oriented standby path
+- `fw-dev-uplink-ws`: processed uplink debug export
+- `fw-dev-audio-ws`: uplink + downlink debug export
+- `fw-prod-standby`: production-like standby behavior
+- `fw-release-token`: release-oriented standby path
 
 ## Commands
 
@@ -42,14 +42,14 @@ bash scripts/package_firmware.sh list
 Example debug-audio package:
 
 ```bash
-git switch firmware/dev-audio-ws
+git switch fw-dev-audio-ws
 bash scripts/package_firmware.sh
 ```
 
 Example release package:
 
 ```bash
-git switch firmware/release-token
+git switch fw-release-token
 bash scripts/package_firmware.sh
 ```
 
