@@ -12,7 +12,7 @@ HOST="${TOKEN_SERVER_HOST:-0.0.0.0}"
 PORT="${TOKEN_SERVER_PORT:-8790}"
 TOKEN_PATH="${TOKEN_SERVER_HTTP_PATH:-/token}"
 TTL_SECONDS="${TOKEN_SERVER_TTL_SECONDS:-3600}"
-ENV_FILE="${TOKEN_SERVER_ENV_FILE:-${PROJECT_DIR}/configs/livekit.local.env}"
+ENV_FILE="${TOKEN_SERVER_ENV_FILE:-${PROJECT_DIR}/configs/token_server.local.env}"
 DISPLAY_HOST="${TOKEN_SERVER_PUBLIC_HOST:-${HOST}}"
 
 usage() {
@@ -29,7 +29,7 @@ Environment:
   TOKEN_SERVER_PORT        Bind port, default: 8790
   TOKEN_SERVER_HTTP_PATH   Token path, default: /token
   TOKEN_SERVER_TTL_SECONDS JWT TTL, default: 3600
-  TOKEN_SERVER_ENV_FILE    Env file, default: configs/livekit.local.env
+  TOKEN_SERVER_ENV_FILE    Env file, default: configs/token_server.local.env
   TOKEN_SERVER_PUBLIC_HOST Optional display host for printed URLs
 EOF
 }

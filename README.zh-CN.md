@@ -172,7 +172,8 @@ SCENARIO=release-token bash scripts/project.sh flash-monitor
 推荐用于日常开发和生产环境：
 
 ```bash
-python3 scripts/token_server.py --env-file configs/livekit.local.env
+cp configs/token_server.local.env.example configs/token_server.local.env
+python3 scripts/token_server.py --env-file configs/token_server.local.env
 ```
 
 如果你希望用 `nohup` 方式后台运行，并自动管理 PID 和日志：
@@ -180,6 +181,11 @@ python3 scripts/token_server.py --env-file configs/livekit.local.env
 ```bash
 bash scripts/token_server_ctl.sh start
 ```
+
+建议把设备和服务端配置拆开：
+
+- `configs/livekit.local.env`：设备构建配置、token server 地址、调试地址
+- `configs/token_server.local.env`：token server 运行时密钥、LiveKit API key/secret
 
 查看状态或停止：
 

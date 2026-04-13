@@ -29,7 +29,7 @@ This is the recommended release path for devices you plan to ship or deploy outs
 
 ## Required Local Or Server Config
 
-Set these in `configs/livekit.local.env` for build-time generation and for the token server runtime:
+Set device-side values in `configs/livekit.local.env`:
 
 ```env
 AUTH_MODE=token_server
@@ -38,24 +38,32 @@ TOKEN_SERVER_TIMEOUT_MS=5000
 TOKEN_SERVER_RETRY_DELAY_MS=3000
 TOKEN_SERVER_AUTH_MAX_FAILURES=3
 
-LIVEKIT_URL=wss://your-project.livekit.cloud
-LIVEKIT_API_KEY=API...
-LIVEKIT_API_SECRET=secret...
-
 LIVEKIT_ROOM=lichuang-room
 LIVEKIT_PARTICIPANT=lichuang-esp32s3
 LIVEKIT_PARTICIPANT_IDENTITY=lichuang-esp32s3
 LIVEKIT_AGENT_NAME=my-agent
 ```
 
-The real `configs/livekit.local.env` file stays gitignored.
+Set token-server runtime secrets in `configs/token_server.local.env`:
+
+```env
+LIVEKIT_URL=wss://your-project.livekit.cloud
+LIVEKIT_API_KEY=API...
+LIVEKIT_API_SECRET=secret...
+
+LIVEKIT_ROOM=lichuang-room
+LIVEKIT_AGENT_NAME=my-agent
+```
+
+Both real files stay gitignored.
 
 ## Token Server
 
 Run the token server on a reachable machine or server:
 
 ```bash
-python3 scripts/token_server.py --env-file configs/livekit.local.env
+cp configs/token_server.local.env.example configs/token_server.local.env
+python3 scripts/token_server.py --env-file configs/token_server.local.env
 ```
 
 Or use the bundled background launcher:

@@ -172,7 +172,8 @@ The repo is currently tuned for the Lichuang ESP32-S3 development board.
 Recommended for normal development and production:
 
 ```bash
-python3 scripts/token_server.py --env-file configs/livekit.local.env
+cp configs/token_server.local.env.example configs/token_server.local.env
+python3 scripts/token_server.py --env-file configs/token_server.local.env
 ```
 
 Run it in the background with PID/log management:
@@ -180,6 +181,11 @@ Run it in the background with PID/log management:
 ```bash
 bash scripts/token_server_ctl.sh start
 ```
+
+Use separate files for device and server:
+
+- `configs/livekit.local.env`: device build config, token server URL, debug endpoints
+- `configs/token_server.local.env`: token server runtime secrets, LiveKit API key/secret
 
 Stop or inspect it:
 
