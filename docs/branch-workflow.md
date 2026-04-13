@@ -11,10 +11,10 @@ Mainline firmware stays on:
 
 Dedicated firmware branches are:
 
-- `firmware/dev-uplink-ws`
-- `firmware/dev-audio-ws`
-- `firmware/prod-standby`
-- `firmware/release-token`
+- `fw-dev-uplink-ws`
+- `fw-dev-audio-ws`
+- `fw-prod-standby`
+- `fw-release-token`
 
 ## How It Works
 

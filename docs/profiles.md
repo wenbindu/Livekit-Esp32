@@ -31,8 +31,8 @@ Recommended toggles:
 Recommended branches:
 
 - `main`
-- `firmware/dev-uplink-ws`
-- `firmware/dev-audio-ws`
+- `fw-dev-uplink-ws`
+- `fw-dev-audio-ws`
 
 All development branches in this repo use `AUTH_MODE=token_server`.
 For the dual-path WAV capture workflow, see `docs/debug-audio.md`.
@@ -53,8 +53,8 @@ Recommended toggles:
 
 Recommended branches:
 
-- `firmware/prod-standby`
-- `firmware/release-token`
+- `fw-prod-standby`
+- `fw-release-token`
 
 ## Standby Flow
 

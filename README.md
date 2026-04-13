@@ -123,14 +123,14 @@ bash scripts/project.sh flash-monitor
 Dedicated debug-audio firmware:
 
 ```bash
-git switch firmware/dev-audio-ws
+git switch fw-dev-audio-ws
 bash scripts/project.sh flash-monitor
 ```
 
 Release token-server firmware:
 
 ```bash
-git switch firmware/release-token
+git switch fw-release-token
 bash scripts/project.sh flash-monitor
 ```
 
@@ -140,10 +140,10 @@ Mainline firmware stays on `main`.
 
 Dedicated firmware branches are:
 
-- `firmware/dev-uplink-ws`: export processed uplink audio to a desktop receiver
-- `firmware/dev-audio-ws`: export both uplink and downlink audio for WAV inspection
-- `firmware/prod-standby`: production-like standby-first behavior
-- `firmware/release-token`: release-oriented standby path
+- `fw-dev-uplink-ws`: export processed uplink audio to a desktop receiver
+- `fw-dev-audio-ws`: export both uplink and downlink audio for WAV inspection
+- `fw-prod-standby`: production-like standby-first behavior
+- `fw-release-token`: release-oriented standby path
 
 See:
 
@@ -228,10 +228,10 @@ bash scripts/package_firmware.sh
 Examples:
 
 ```bash
-git switch firmware/dev-audio-ws
+git switch fw-dev-audio-ws
 bash scripts/package_firmware.sh
 
-git switch firmware/release-token
+git switch fw-release-token
 bash scripts/package_firmware.sh
 ```
 

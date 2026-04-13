@@ -14,7 +14,7 @@ This is the recommended development-time audio debugging path for `lichuang_esp3
 Use the dedicated debug-audio branch:
 
 ```bash
-git switch firmware/dev-audio-ws
+git switch fw-dev-audio-ws
 ```
 
 This firmware keeps normal chat enabled and adds two lightweight debug exports:
@@ -25,14 +25,14 @@ This firmware keeps normal chat enabled and adds two lightweight debug exports:
 Build and flash it with:
 
 ```bash
-git switch firmware/dev-audio-ws
+git switch fw-dev-audio-ws
 bash scripts/project.sh flash-monitor
 ```
 
 If you want a reusable firmware drop, package it with:
 
 ```bash
-git switch firmware/dev-audio-ws
+git switch fw-dev-audio-ws
 bash scripts/package_firmware.sh
 ```
 
@@ -61,7 +61,7 @@ bash scripts/package_firmware.sh
 Use:
 
 ```bash
-git switch firmware/dev-audio-ws
+git switch fw-dev-audio-ws
 ```
 
 Branch-owned defaults:
@@ -132,14 +132,14 @@ Generated files are gitignored.
 Build, flash, and monitor with:
 
 ```bash
-git switch firmware/dev-audio-ws
+git switch fw-dev-audio-ws
 bash scripts/project.sh flash-monitor
 ```
 
 If you only need serial logs:
 
 ```bash
-git switch firmware/dev-audio-ws
+git switch fw-dev-audio-ws
 bash scripts/project.sh monitor
 ```
 
@@ -175,7 +175,7 @@ This means `uplink_<ts>.wav` and `downlink_<ts>.wav` are intended to be analyzed
 ## Practical Workflow
 
 1. Start the local WS receiver with `bash scripts/debug_audio_ws_start.sh`.
-2. Switch to `firmware/dev-audio-ws` and flash it.
+2. Switch to `fw-dev-audio-ws` and flash it.
 3. Wait for both websocket connections.
 4. Speak to the device for 20 to 30 seconds.
 5. Trigger an AI response long enough to exercise playback.
