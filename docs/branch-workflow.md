@@ -2,8 +2,8 @@
 
 ## Goal
 
-Different firmware paths are now managed by git branch, not by passing different
-`SCENARIO=...` values on the same branch.
+Different firmware paths are now managed by git branch. The old scenario overlay
+workflow has been removed.
 
 Mainline firmware stays on:
 
@@ -43,8 +43,3 @@ Inspect the current branch package identity:
 ```bash
 bash scripts/package_firmware.sh list
 ```
-
-## Migration Note
-
-Legacy `SCENARIO=...` files still exist as a temporary compatibility layer during
-the branch split, but they are no longer the recommended workflow.
