@@ -2,7 +2,7 @@
 
 ## Purpose
 
-`firmware/release-token` is the production-oriented firmware branch for `lichuang_esp32s3`.
+`fw-release-token` is the production-oriented firmware branch for `lichuang_esp32s3`.
 
 It keeps the LiveKit API secret on the server side only:
 
@@ -106,14 +106,14 @@ If the board looks idle right after boot, that is expected for `release-token`: 
 ## Build And Flash
 
 ```bash
-git switch firmware/release-token
+git switch fw-release-token
 bash scripts/project.sh flash-monitor
 ```
 
 ## Package A Release Artifact
 
 ```bash
-git switch firmware/release-token
+git switch fw-release-token
 bash scripts/package_firmware.sh
 ```
 
