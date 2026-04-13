@@ -123,14 +123,14 @@ bash scripts/project.sh flash-monitor
 双向音频导出调试固件：
 
 ```bash
-git switch firmware/dev-audio-ws
+git switch fw-dev-audio-ws
 bash scripts/project.sh flash-monitor
 ```
 
 发布版 token-server 固件：
 
 ```bash
-git switch firmware/release-token
+git switch fw-release-token
 bash scripts/project.sh flash-monitor
 ```
 
@@ -140,10 +140,10 @@ bash scripts/project.sh flash-monitor
 
 专用固件分支有：
 
-- `firmware/dev-uplink-ws`：导出处理后的上行音频
-- `firmware/dev-audio-ws`：同时导出上行和下行音频，用于 WAV 分析
-- `firmware/prod-standby`：更接近生产模式的待机流程
-- `firmware/release-token`：偏发布用途的待机固件
+- `fw-dev-uplink-ws`：导出处理后的上行音频
+- `fw-dev-audio-ws`：同时导出上行和下行音频，用于 WAV 分析
+- `fw-prod-standby`：更接近生产模式的待机流程
+- `fw-release-token`：偏发布用途的待机固件
 
 更多说明见：
 
@@ -228,10 +228,10 @@ bash scripts/package_firmware.sh
 示例：
 
 ```bash
-git switch firmware/dev-audio-ws
+git switch fw-dev-audio-ws
 bash scripts/package_firmware.sh
 
-git switch firmware/release-token
+git switch fw-release-token
 bash scripts/package_firmware.sh
 ```
 
