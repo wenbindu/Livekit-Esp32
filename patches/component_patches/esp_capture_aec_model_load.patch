@@ -1,0 +1,43 @@
+--- managed_components/espressif__esp_capture/impl/capture_audio_src/capture_audio_aec_src.c
++++ managed_components/espressif__esp_capture/impl/capture_audio_src/capture_audio_aec_src.c
+@@ -99,6 +99,23 @@ typedef struct {
+     audio_aec_vad_res_t        *vad_res;
+ } audio_aec_src_t;
+ 
++static bool audio_aec_src_need_models(const audio_aec_src_t *src)
++{
++    bool need_models = false;
++
++#if CONFIG_LK_EXAMPLE_AUDIO_AFE_USE_NS
++#if defined(CONFIG_SR_NSN_NSNET1) || defined(CONFIG_SR_NSN_NSNET2)
++    need_models = true;
++#endif
++#endif
++
++#if defined(CONFIG_SR_VADN_VADNET1_SMALL) || defined(CONFIG_SR_VADN_VADNET1_MEDIUM)
++    if (src->data_on_vad) {
++        need_models = true;
++    }
++#endif
++
++    return need_models;
++}
++
+ static int open_afe_in_ram(void *arg)
+ {
+     audio_aec_src_t *src = (audio_aec_src_t *)arg;
+@@ -108,9 +125,11 @@ static int open_afe_in_ram(void *arg)
+         const bool use_high_perf = CONFIG_LK_EXAMPLE_AUDIO_AFE_HIGH_PERF;
+         const bool use_ns = CONFIG_LK_EXAMPLE_AUDIO_AFE_USE_NS;
+         const bool use_psram = CONFIG_LK_EXAMPLE_AUDIO_AFE_PSRAM;
+-        src->models = esp_srmodel_init("model");
+-        if (src->models == NULL) {
+-            ESP_LOGW(TAG, "No model to load");
++        if (audio_aec_src_need_models(src)) {
++            src->models = esp_srmodel_init("model");
++            if (src->models == NULL) {
++                ESP_LOGW(TAG, "No model to load");
++            }
+         }
+         afe_config_t *afe_config = afe_config_init(
+             src->mic_layout,

@@ -11,6 +11,7 @@ CONFIG_STAMP_FILE=".project_config.stamp"
 DEFAULT_ENV_FILE="${PROJECT_DIR}/configs/livekit.local.env"
 DEFAULT_BRANCH_ENV_FILE="${PROJECT_DIR}/configs/branch.defaults.env"
 DEFAULT_PRESET_DIR="${PROJECT_DIR}/configs/presets"
+MANAGED_PATCH_DIR="${PROJECT_DIR}/patches/component_patches"
 
 usage() {
     cat <<'EOF'
@@ -139,6 +140,26 @@ load_config_env() {
     if [[ -n "${preset_file}" ]]; then
         load_optional_env "${preset_file}"
     fi
+}
+
+apply_managed_component_patches() {
+    if [[ ! -d "${MANAGED_PATCH_DIR}" ]]; then
+        return 0
+    fi
+    if ! command -v patch >/dev/null 2>&1; then
+        echo "patch command is required to apply managed component fixes" >&2
+        return 1
+    fi
+
+    local patch_file
+    for patch_file in "${MANAGED_PATCH_DIR}"/*.patch; do
+        [[ -f "${patch_file}" ]] || continue
+
+        if patch --dry-run --forward --silent -p0 -d "${PROJECT_DIR}" < "${patch_file}" >/dev/null 2>&1; then
+            patch --forward --silent -p0 -d "${PROJECT_DIR}" < "${patch_file}" >/dev/null
+            echo "Applied managed component patch: $(basename "${patch_file}")" >&2
+        fi
+    done
 }
 
 detect_port() {
@@ -548,6 +569,7 @@ case "${command_name}" in
         ;;
     build)
         ensure_project_config
+        apply_managed_component_patches
         run_idf build
         ;;
     clean)
@@ -562,6 +584,7 @@ case "${command_name}" in
         ;;
     flash)
         ensure_project_config
+        apply_managed_component_patches
         port="$(detect_port)"
         echo "Using serial port: ${port}" >&2
         run_idf -p "${port}" flash
@@ -573,6 +596,7 @@ case "${command_name}" in
         ;;
     flash-monitor)
         ensure_project_config
+        apply_managed_component_patches
         port="$(detect_port)"
         echo "Using serial port: ${port}" >&2
         run_idf -p "${port}" flash monitor
