@@ -66,9 +66,9 @@ Practical meaning:
 
 Each lifecycle branch owns only its default lifecycle behavior:
 
-- `dev`: token server auth, no standby, no debug audio by default
-- `test`: token server auth, standby-first, no debug audio by default
-- `main`: token server auth, standby-first, no debug audio by default
+- `dev`: device-server auth, no standby, no debug audio by default
+- `test`: device-server auth, standby-first, no debug audio by default
+- `main`: device-server auth, standby-first, no debug audio by default
 
 Branch defaults must stay minimal. If a new need is temporary or
 investigation-only, it belongs in a preset, not in a long-lived branch.
@@ -130,10 +130,9 @@ diagnostics baseline instead:
 This keeps production firmware observable without keeping heavy debug features
 permanently enabled.
 
-## Token Server Direction
+## Device Server Direction
 
-The current token server can remain the first module, but the long-term service
-shape should become a device service with separate concerns:
+The current deployment should use a device service with separate concerns:
 
 - auth API for token issuance
 - diagnostics event ingest

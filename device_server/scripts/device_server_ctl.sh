@@ -9,12 +9,12 @@ RUN_DIR="${DEVICE_SERVER_RUN_DIR:-${PROJECT_DIR}/.run}"
 PID_FILE="${DEVICE_SERVER_PID_FILE:-${RUN_DIR}/device_server.pid}"
 LOG_FILE="${DEVICE_SERVER_LOG_FILE:-${RUN_DIR}/device_server.log}"
 
-HOST="${TOKEN_SERVER_HOST:-0.0.0.0}"
-PORT="${TOKEN_SERVER_PORT:-8790}"
-TOKEN_PATH="${TOKEN_SERVER_HTTP_PATH:-/token}"
-TTL_SECONDS="${TOKEN_SERVER_TTL_SECONDS:-3600}"
+HOST="${DEVICE_SERVER_HOST:-${TOKEN_SERVER_HOST:-0.0.0.0}}"
+PORT="${DEVICE_SERVER_PORT:-${TOKEN_SERVER_PORT:-8790}}"
+TOKEN_PATH="${DEVICE_SERVER_LEGACY_TOKEN_PATH:-${TOKEN_SERVER_HTTP_PATH:-/token}}"
+TTL_SECONDS="${DEVICE_SERVER_TTL_SECONDS:-${TOKEN_SERVER_TTL_SECONDS:-3600}}"
 ENV_FILE="${DEVICE_SERVER_ENV_FILE:-${TOKEN_SERVER_ENV_FILE:-${PROJECT_DIR}/configs/device_server.local.env}}"
-DISPLAY_HOST="${TOKEN_SERVER_PUBLIC_HOST:-${HOST}}"
+DISPLAY_HOST="${DEVICE_SERVER_PUBLIC_HOST:-${TOKEN_SERVER_PUBLIC_HOST:-${HOST}}}"
 AUTH_PATH="${DEVICE_SERVER_AUTH_PATH:-/v1/auth/token}"
 EVENT_PATH="${DEVICE_SERVER_EVENT_PATH:-/v1/diagnostics/events}"
 BLOB_PATH="${DEVICE_SERVER_BLOB_PATH:-/v1/diagnostics/blobs}"
@@ -33,13 +33,12 @@ Usage:
   bash device_server/scripts/device_server_ctl.sh logs
 
 Environment:
-  TOKEN_SERVER_HOST        Bind host, default: 0.0.0.0
-  TOKEN_SERVER_PORT        Bind port, default: 8790
-  TOKEN_SERVER_HTTP_PATH   Legacy token path, default: /token
-  TOKEN_SERVER_TTL_SECONDS JWT TTL, default: 3600
-  TOKEN_SERVER_ENV_FILE    Legacy alias for the env file
+  DEVICE_SERVER_HOST       Bind host, default: 0.0.0.0
+  DEVICE_SERVER_PORT       Bind port, default: 8790
+  DEVICE_SERVER_LEGACY_TOKEN_PATH Legacy token path, default: /token
+  DEVICE_SERVER_TTL_SECONDS JWT TTL, default: 3600
   DEVICE_SERVER_ENV_FILE   Env file, default: device_server/configs/device_server.local.env
-  TOKEN_SERVER_PUBLIC_HOST Optional display host for printed URLs
+  DEVICE_SERVER_PUBLIC_HOST Optional display host for printed URLs
   DEVICE_SERVER_AUTH_PATH  Auth API path, default: /v1/auth/token
   DEVICE_SERVER_EVENT_PATH Diagnostics event ingest path
   DEVICE_SERVER_BLOB_PATH  Diagnostics blob ingest path
@@ -50,6 +49,7 @@ Environment:
   DEVICE_SERVER_LOG_FILE   Log file path
   DEVICE_SERVER_MAX_EVENT_BYTES
   DEVICE_SERVER_MAX_BLOB_BYTES
+  TOKEN_SERVER_*           Legacy aliases still accepted
 EOF
 }
 

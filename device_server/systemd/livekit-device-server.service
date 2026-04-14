@@ -12,10 +12,10 @@ User=deployer
 Group=deployer
 WorkingDirectory=/opt/livekit-esp32s3/device_server
 EnvironmentFile=/opt/livekit-esp32s3/device_server/configs/device_server.local.env
-Environment=TOKEN_SERVER_HOST=0.0.0.0
-Environment=TOKEN_SERVER_PORT=8790
-Environment=TOKEN_SERVER_HTTP_PATH=/token
-Environment=TOKEN_SERVER_TTL_SECONDS=3600
+Environment=DEVICE_SERVER_HOST=0.0.0.0
+Environment=DEVICE_SERVER_PORT=8790
+Environment=DEVICE_SERVER_LEGACY_TOKEN_PATH=/token
+Environment=DEVICE_SERVER_TTL_SECONDS=3600
 Environment=DEVICE_SERVER_AUTH_PATH=/v1/auth/token
 Environment=DEVICE_SERVER_EVENT_PATH=/v1/diagnostics/events
 Environment=DEVICE_SERVER_BLOB_PATH=/v1/diagnostics/blobs

@@ -22,7 +22,6 @@ English | [简体中文](README.zh-CN.md)
 - `docs/`: development and packaging notes
 - `scripts/project.sh`: configure/build/flash wrapper
 - `scripts/package_firmware.sh`: package the firmware represented by the current lifecycle branch
-- `scripts/token_server.py`: compatibility shim for the device-server workspace
 - `scripts/debug_uplink_ws_server.py`: desktop receiver for debug-audio WAV capture
 
 ## Open-Source Safety
@@ -30,16 +29,14 @@ English | [简体中文](README.zh-CN.md)
 Real credentials must stay in ignored local files:
 
 - `configs/livekit.local.env`
-- `configs/token_server.local.env`
 - `device_server/configs/device_server.local.env`
 
 The tracked placeholders are:
 
 - `configs/livekit.local.env.example`
-- `configs/token_server.local.env.example`
 - `device_server/configs/device_server.local.env.example`
 
-contains placeholders only.
+These contain placeholders only.
 
 Important:
 
@@ -100,14 +97,14 @@ Minimum machine-local fields:
 - `LIVEKIT_PARTICIPANT_IDENTITY`
 - `LIVEKIT_AGENT_NAME`
 
-Useful token-server knobs:
+Useful auth-server knobs:
 
 - `TOKEN_SERVER_RETRY_DELAY_MS`
 - `TOKEN_SERVER_AUTH_MAX_FAILURES`
 
-Token-server runtime secrets live separately in:
+Device-server runtime secrets live separately in:
 
-- `configs/token_server.local.env`
+- `device_server/configs/device_server.local.env`
 
 Tracked firmware defaults live in:
 
@@ -177,7 +174,7 @@ The repo is currently tuned for the Lichuang ESP32-S3 development board.
 - the current playback path is intentionally kept as app-level mono PCM for the single-speaker hardware
 - Wi-Fi provisioning is part of the firmware flow; if saved Wi-Fi fails, the board should return to provisioning mode
 
-## Token Server
+## Device Server
 
 Recommended for normal development and production:
 
@@ -194,8 +191,7 @@ Run it in the background with PID/log management:
 bash device_server/scripts/device_server_ctl.sh start
 ```
 
-The device-server workspace also ships a `systemd` unit and keeps the old root
-paths as compatibility shims. See:
+The device-server workspace also ships a `systemd` unit. See:
 
 - `device_server/README.md`
 - `docs/device-server.md`

@@ -22,7 +22,6 @@
 - `docs/`：调试、打包、模式说明文档
 - `scripts/project.sh`：配置、编译、烧录、串口监控入口
 - `scripts/package_firmware.sh`：按当前 git branch 打包固件
-- `scripts/token_server.py`：兼容入口，实际会转发到独立的 device server workspace
 - `scripts/debug_uplink_ws_server.py`：开发阶段接收调试音频并保存为 WAV
 
 ## 开源安全说明
@@ -30,7 +29,6 @@
 真实密钥只能放在本地忽略文件里：
 
 - `configs/livekit.local.env`
-- `configs/token_server.local.env`
 - `device_server/configs/device_server.local.env`
 
 这些文件都已经被 `.gitignore` 忽略，不会进入仓库。
@@ -38,7 +36,6 @@
 可以提交到仓库的只有样例文件：
 
 - `configs/livekit.local.env.example`
-- `configs/token_server.local.env.example`
 - `device_server/configs/device_server.local.env.example`
 
 注意：
@@ -100,14 +97,14 @@ cp configs/livekit.local.env.example configs/livekit.local.env
 - `LIVEKIT_PARTICIPANT_IDENTITY`
 - `LIVEKIT_AGENT_NAME`
 
-常用 token-server 参数：
+常用鉴权服务参数：
 
 - `TOKEN_SERVER_RETRY_DELAY_MS`
 - `TOKEN_SERVER_AUTH_MAX_FAILURES`
 
-token server 运行时密钥单独放在：
+device server 运行时密钥单独放在：
 
-- `configs/token_server.local.env`
+- `device_server/configs/device_server.local.env`
 
 受 git 管理的固件默认配置放在：
 
@@ -175,7 +172,7 @@ bash scripts/project.sh flash-monitor
 - 当前播放链路刻意保持应用层单声道 PCM，以适配单喇叭硬件
 - 如果保存的 Wi-Fi 无法连接，固件应回退到配网流程
 
-## Token Server
+## Device Server
 
 推荐用于日常开发和生产环境：
 
@@ -192,7 +189,7 @@ python3 device_server/scripts/device_server.py \
 bash device_server/scripts/device_server_ctl.sh start
 ```
 
-独立 workspace 里也附带了 `systemd` unit。老的根目录路径仍保留兼容壳，文档见：
+独立 workspace 里也附带了 `systemd` unit，文档见：
 
 - `device_server/README.md`
 - `docs/device-server.md`

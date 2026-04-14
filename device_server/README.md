@@ -10,13 +10,7 @@ It contains:
 - `configs/device_server.local.env.example`: runtime secret template
 - `systemd/livekit-device-server.service`: production service unit
 
-The repository root keeps compatibility wrappers:
-
-- `scripts/token_server.py`
-- `scripts/token_server_ctl.sh`
-- `configs/token_server.local.env.example`
-
-Use the workspace paths for new deployments.
+This is now the only supported server workspace in the repository.
 
 ## Quick Start
 
@@ -36,6 +30,14 @@ LIVEKIT_API_SECRET=secret...
 LIVEKIT_ROOM=lichuang-room
 LIVEKIT_AGENT_NAME=my-agent
 ```
+
+The firmware still points at the legacy auth endpoint:
+
+```env
+TOKEN_SERVER_URL=http://YOUR_SERVER_IP:8790/token
+```
+
+That URL is served by `device_server`.
 
 Run in the foreground:
 
@@ -79,6 +81,19 @@ sudo systemctl status livekit-device-server
 sudo journalctl -u livekit-device-server -f
 sudo systemctl restart livekit-device-server
 ```
+
+Primary service env names:
+
+- `DEVICE_SERVER_HOST`
+- `DEVICE_SERVER_PORT`
+- `DEVICE_SERVER_LEGACY_TOKEN_PATH`
+- `DEVICE_SERVER_TTL_SECONDS`
+- `DEVICE_SERVER_PUBLIC_HOST`
+- `DEVICE_SERVER_AUTH_PATH`
+- `DEVICE_SERVER_EVENT_PATH`
+- `DEVICE_SERVER_BLOB_PATH`
+- `DEVICE_SERVER_ADMIN_PATH`
+- `DEVICE_SERVER_DATA_DIR`
 
 ## API Endpoints
 

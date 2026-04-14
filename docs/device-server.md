@@ -4,12 +4,6 @@
 
 The canonical workspace now lives under `device_server/`.
 
-The root paths remain as compatibility wrappers:
-
-- `scripts/token_server.py`
-- `scripts/token_server_ctl.sh`
-- `configs/token_server.local.env.example`
-
 The real implementation now lives in:
 
 - `device_server/scripts/device_server.py`
@@ -18,8 +12,7 @@ The real implementation now lives in:
 - `device_server/configs/device_server.local.env.example`
 - `device_server/systemd/livekit-device-server.service`
 
-This keeps the server deployment assets in one place while preserving backward
-compatibility for existing commands and firmware docs.
+This keeps the server deployment assets in one place.
 
 The service acts as the first `device server` baseline instead of only being a
 single token endpoint.
@@ -193,16 +186,13 @@ Response includes:
 
 The canonical launcher is now `device_server/scripts/device_server_ctl.sh`.
 
-For old deployments, `scripts/token_server.py` and
-`scripts/token_server_ctl.sh` still work and forward to the workspace.
-
 Useful env vars:
 
-- `TOKEN_SERVER_HOST`
-- `TOKEN_SERVER_PORT`
-- `TOKEN_SERVER_HTTP_PATH`
-- `TOKEN_SERVER_TTL_SECONDS`
-- `TOKEN_SERVER_PUBLIC_HOST`
+- `DEVICE_SERVER_HOST`
+- `DEVICE_SERVER_PORT`
+- `DEVICE_SERVER_LEGACY_TOKEN_PATH`
+- `DEVICE_SERVER_TTL_SECONDS`
+- `DEVICE_SERVER_PUBLIC_HOST`
 - `DEVICE_SERVER_ENV_FILE`
 - `DEVICE_SERVER_AUTH_PATH`
 - `DEVICE_SERVER_EVENT_PATH`
@@ -214,6 +204,7 @@ Useful env vars:
 - `DEVICE_SERVER_LOG_FILE`
 - `DEVICE_SERVER_MAX_EVENT_BYTES`
 - `DEVICE_SERVER_MAX_BLOB_BYTES`
+- `TOKEN_SERVER_*` legacy aliases are still accepted if you already use them
 
 ## Deployment
 

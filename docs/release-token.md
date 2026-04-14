@@ -1,4 +1,4 @@
-# Production Token-Server Firmware
+# Production Device-Server Firmware
 
 ## Purpose
 
@@ -6,7 +6,7 @@
 
 It keeps the LiveKit API secret on the server side only:
 
-- the token server signs JWTs
+- the device server signs JWTs
 - the device fetches a short-lived token
 - the device joins LiveKit with that token
 - if the token is rejected or expired, the device fetches a fresh token and retries
@@ -60,7 +60,7 @@ Both real files stay gitignored.
 
 ## Device Server
 
-The token server script now serves as the first `device server` baseline:
+The device server exposes:
 
 - legacy token path remains `POST /token`
 - new auth path is `POST /v1/auth/token`
@@ -106,7 +106,7 @@ Detailed API contract:
 3. Device enters standby and waits on the `BOOT` button
 4. User presses `BOOT`
 5. Device syncs clock and initializes audio
-6. Device requests a token from the token server
+6. Device requests a token from the device server
 7. Device joins the LiveKit room
 
 If the board looks idle right after boot, that is expected for `main`: it will
@@ -115,11 +115,11 @@ not try to join a room until `BOOT` is pressed.
 ### Expired or invalid token
 
 1. LiveKit rejects the token with `BAD_TOKEN` or `UNAUTHORIZED`
-2. Device requests a fresh token from the token server
+2. Device requests a fresh token from the device server
 3. Device retries room join
 4. If repeated auth failures reach the configured limit, the screen shows `AUTH EXPIRED`
 
-### Token server temporary failure
+### Device-server temporary failure
 
 - the device keeps retrying token fetch with the configured retry delay
 - the screen shows a retry status instead of embedding a secret into the firmware

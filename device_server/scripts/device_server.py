@@ -87,6 +87,16 @@ def env_or_default(arg_value: str | None, env_name: str, default: str) -> str:
     return os.environ.get(env_name, default)
 
 
+def env_or_default_aliases(arg_value: str | None, env_names: tuple[str, ...], default: str) -> str:
+    if arg_value is not None:
+        return arg_value
+    for env_name in env_names:
+        raw = os.environ.get(env_name)
+        if raw is not None and raw != "":
+            return raw
+    return default
+
+
 def env_or_default_int(arg_value: int | None, env_name: str, default: int) -> int:
     if arg_value is not None:
         return arg_value
@@ -94,6 +104,16 @@ def env_or_default_int(arg_value: int | None, env_name: str, default: int) -> in
     if raw is None or raw == "":
         return default
     return int(raw)
+
+
+def env_or_default_int_aliases(arg_value: int | None, env_names: tuple[str, ...], default: int) -> int:
+    if arg_value is not None:
+        return arg_value
+    for env_name in env_names:
+        raw = os.environ.get(env_name)
+        if raw is not None and raw != "":
+            return int(raw)
+    return default
 
 
 def normalize_path(path: str) -> str:
@@ -575,10 +595,14 @@ class DeviceHandler(BaseHTTPRequestHandler):
 
 
 def build_service_config(args: argparse.Namespace) -> tuple[str, int, DeviceServiceConfig]:
-    host = env_or_default(args.host, "TOKEN_SERVER_HOST", "0.0.0.0")
-    port = env_or_default_int(args.port, "TOKEN_SERVER_PORT", 8790)
+    host = env_or_default_aliases(args.host, ("DEVICE_SERVER_HOST", "TOKEN_SERVER_HOST"), "0.0.0.0")
+    port = env_or_default_int_aliases(args.port, ("DEVICE_SERVER_PORT", "TOKEN_SERVER_PORT"), 8790)
     legacy_token_path = normalize_path(
-        env_or_default(args.path, "TOKEN_SERVER_HTTP_PATH", DEFAULT_LEGACY_TOKEN_PATH)
+        env_or_default_aliases(
+            args.path,
+            ("DEVICE_SERVER_LEGACY_TOKEN_PATH", "TOKEN_SERVER_HTTP_PATH"),
+            DEFAULT_LEGACY_TOKEN_PATH,
+        )
     )
     auth_path = normalize_path(
         env_or_default(args.auth_path, "DEVICE_SERVER_AUTH_PATH", DEFAULT_AUTH_PATH)
@@ -592,7 +616,11 @@ def build_service_config(args: argparse.Namespace) -> tuple[str, int, DeviceServ
     admin_path = normalize_path(
         env_or_default(args.admin_path, "DEVICE_SERVER_ADMIN_PATH", DEFAULT_ADMIN_PATH)
     )
-    ttl_seconds = env_or_default_int(args.ttl_seconds, "TOKEN_SERVER_TTL_SECONDS", 3600)
+    ttl_seconds = env_or_default_int_aliases(
+        args.ttl_seconds,
+        ("DEVICE_SERVER_TTL_SECONDS", "TOKEN_SERVER_TTL_SECONDS"),
+        3600,
+    )
     data_dir = Path(env_or_default(args.data_dir, "DEVICE_SERVER_DATA_DIR", DEFAULT_DATA_DIR)).resolve()
     max_event_bytes = env_or_default_int(
         args.max_event_bytes,

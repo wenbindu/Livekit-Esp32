@@ -83,13 +83,11 @@ Included files:
 Keep all real LiveKit secrets only in:
 
 - `configs/livekit.local.env`
-- `configs/token_server.local.env`
 - `device_server/configs/device_server.local.env`
 
 Do not place real credentials in:
 
 - `configs/livekit.local.env.example`
-- `configs/token_server.local.env.example`
 - `device_server/configs/device_server.local.env.example`
 - `configs/branch.defaults.env`
 - `configs/presets/*.env`
