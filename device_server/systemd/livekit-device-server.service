@@ -1,0 +1,36 @@
+# Edit User, Group, WorkingDirectory, EnvironmentFile, ExecStart, and
+# ReadWritePaths to match your server path before installing.
+
+[Unit]
+Description=LiveKit ESP32-S3 Device Server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=deployer
+Group=deployer
+WorkingDirectory=/opt/livekit-esp32s3/device_server
+EnvironmentFile=/opt/livekit-esp32s3/device_server/configs/device_server.local.env
+Environment=TOKEN_SERVER_HOST=0.0.0.0
+Environment=TOKEN_SERVER_PORT=8790
+Environment=TOKEN_SERVER_HTTP_PATH=/token
+Environment=TOKEN_SERVER_TTL_SECONDS=3600
+Environment=DEVICE_SERVER_AUTH_PATH=/v1/auth/token
+Environment=DEVICE_SERVER_EVENT_PATH=/v1/diagnostics/events
+Environment=DEVICE_SERVER_BLOB_PATH=/v1/diagnostics/blobs
+Environment=DEVICE_SERVER_ADMIN_PATH=/v1/admin/storage
+Environment=DEVICE_SERVER_DATA_DIR=/opt/livekit-esp32s3/device_server/.run/device_server
+ExecStart=/opt/livekit-esp32s3/device_server/scripts/device_server_run.sh
+Restart=always
+RestartSec=2
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ReadWritePaths=/opt/livekit-esp32s3/device_server/.run
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

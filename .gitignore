@@ -11,6 +11,7 @@ dist/
 debug_uplink_ws/
 debug_audio_ws/
 .run/
+device_server/.run/
 __pycache__/
 *.pyc
 *.wav
@@ -33,4 +34,8 @@ configs/livekit.local.env
 configs/*.local.env
 configs/*.private.env
 configs/*.secret.env
+device_server/configs/*.local.env
+device_server/configs/*.private.env
+device_server/configs/*.secret.env
 !configs/livekit.local.env.example
+!device_server/configs/*.local.env.example

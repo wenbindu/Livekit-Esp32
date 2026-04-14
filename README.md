@@ -18,10 +18,11 @@ English | [简体中文](README.zh-CN.md)
 - `components/78__esp-wifi-connect`: vendored provisioning portal component
 - `components/78__xiaozhi-fonts`: vendored font and emoji assets
 - `configs/`: board/profile defaults, branch-owned firmware defaults, and local config examples
+- `device_server/`: standalone device-server workspace, deployment scripts, and `systemd` unit
 - `docs/`: development and packaging notes
 - `scripts/project.sh`: configure/build/flash wrapper
 - `scripts/package_firmware.sh`: package the firmware represented by the current lifecycle branch
-- `scripts/token_server.py`: local or remote device server with token and diagnostics APIs
+- `scripts/token_server.py`: compatibility shim for the device-server workspace
 - `scripts/debug_uplink_ws_server.py`: desktop receiver for debug-audio WAV capture
 
 ## Open-Source Safety
@@ -30,11 +31,13 @@ Real credentials must stay in ignored local files:
 
 - `configs/livekit.local.env`
 - `configs/token_server.local.env`
+- `device_server/configs/device_server.local.env`
 
 The tracked placeholders are:
 
 - `configs/livekit.local.env.example`
 - `configs/token_server.local.env.example`
+- `device_server/configs/device_server.local.env.example`
 
 contains placeholders only.
 
@@ -179,31 +182,34 @@ The repo is currently tuned for the Lichuang ESP32-S3 development board.
 Recommended for normal development and production:
 
 ```bash
-cp configs/token_server.local.env.example configs/token_server.local.env
-python3 scripts/token_server.py --env-file configs/token_server.local.env
+cp device_server/configs/device_server.local.env.example \
+   device_server/configs/device_server.local.env
+python3 device_server/scripts/device_server.py \
+  --env-file device_server/configs/device_server.local.env
 ```
 
 Run it in the background with PID/log management:
 
 ```bash
-bash scripts/token_server_ctl.sh start
+bash device_server/scripts/device_server_ctl.sh start
 ```
 
-The same script now also exposes first-pass device-server endpoints for
-diagnostics event and blob ingest. See:
+The device-server workspace also ships a `systemd` unit and keeps the old root
+paths as compatibility shims. See:
 
+- `device_server/README.md`
 - `docs/device-server.md`
 
 Use separate files for device and server:
 
 - `configs/livekit.local.env`: device build config, token server URL, debug endpoints
-- `configs/token_server.local.env`: token server runtime secrets, LiveKit API key/secret
+- `device_server/configs/device_server.local.env`: device-server runtime secrets, LiveKit API key/secret
 
 Stop or inspect it:
 
 ```bash
-bash scripts/token_server_ctl.sh status
-bash scripts/token_server_ctl.sh stop
+bash device_server/scripts/device_server_ctl.sh status
+bash device_server/scripts/device_server_ctl.sh stop
 ```
 
 For the release firmware flow that refreshes token-server JWTs and shows `AUTH EXPIRED` after repeated auth failures, see:

@@ -2,8 +2,27 @@
 
 ## Purpose
 
-The current `scripts/token_server.py` now acts as the first `device server`
-baseline instead of only being a single token endpoint.
+The canonical workspace now lives under `device_server/`.
+
+The root paths remain as compatibility wrappers:
+
+- `scripts/token_server.py`
+- `scripts/token_server_ctl.sh`
+- `configs/token_server.local.env.example`
+
+The real implementation now lives in:
+
+- `device_server/scripts/device_server.py`
+- `device_server/scripts/device_server_ctl.sh`
+- `device_server/scripts/device_server_run.sh`
+- `device_server/configs/device_server.local.env.example`
+- `device_server/systemd/livekit-device-server.service`
+
+This keeps the server deployment assets in one place while preserving backward
+compatibility for existing commands and firmware docs.
+
+The service acts as the first `device server` baseline instead of only being a
+single token endpoint.
 
 It keeps backward compatibility with the existing firmware path:
 
@@ -97,7 +116,7 @@ Example batch:
 
 Storage:
 
-- JSON Lines files under `.run/device_server/events/YYYYMMDD/<device>.jsonl`
+- JSON Lines files under `device_server/.run/device_server/events/YYYYMMDD/<device>.jsonl`
 
 ## Diagnostics Blob Ingest
 
@@ -136,7 +155,7 @@ JSON upload example:
 
 Storage:
 
-- blob files under `.run/device_server/blobs/YYYYMMDD/<device>/`
+- blob files under `device_server/.run/device_server/blobs/YYYYMMDD/<device>/`
 - sidecar metadata JSON next to each blob file
 
 Each stored blob records:
@@ -162,9 +181,20 @@ Response includes:
 - blob file count and total bytes
 - latest modification timestamp for each tree
 
+## Workspace Layout
+
+- `device_server/scripts/device_server.py`: foreground server
+- `device_server/scripts/device_server_ctl.sh`: background launcher
+- `device_server/scripts/device_server_run.sh`: `systemd` foreground runner
+- `device_server/configs/device_server.local.env`: runtime env file
+- `device_server/systemd/livekit-device-server.service`: deployment unit
+
 ## Runtime Config
 
-The launcher script still uses `scripts/token_server_ctl.sh`.
+The canonical launcher is now `device_server/scripts/device_server_ctl.sh`.
+
+For old deployments, `scripts/token_server.py` and
+`scripts/token_server_ctl.sh` still work and forward to the workspace.
 
 Useful env vars:
 
@@ -173,13 +203,40 @@ Useful env vars:
 - `TOKEN_SERVER_HTTP_PATH`
 - `TOKEN_SERVER_TTL_SECONDS`
 - `TOKEN_SERVER_PUBLIC_HOST`
+- `DEVICE_SERVER_ENV_FILE`
 - `DEVICE_SERVER_AUTH_PATH`
 - `DEVICE_SERVER_EVENT_PATH`
 - `DEVICE_SERVER_BLOB_PATH`
 - `DEVICE_SERVER_ADMIN_PATH`
 - `DEVICE_SERVER_DATA_DIR`
+- `DEVICE_SERVER_RUN_DIR`
+- `DEVICE_SERVER_PID_FILE`
+- `DEVICE_SERVER_LOG_FILE`
 - `DEVICE_SERVER_MAX_EVENT_BYTES`
 - `DEVICE_SERVER_MAX_BLOB_BYTES`
+
+## Deployment
+
+For manual background launch:
+
+```bash
+cp device_server/configs/device_server.local.env.example \
+   device_server/configs/device_server.local.env
+bash device_server/scripts/device_server_ctl.sh start
+```
+
+For `systemd`, edit and install:
+
+```bash
+sudo cp device_server/systemd/livekit-device-server.service \
+  /etc/systemd/system/livekit-device-server.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now livekit-device-server
+```
+
+More deployment notes:
+
+- `device_server/README.md`
 
 ## Current Limits
 
@@ -198,3 +255,4 @@ These defaults are intended for:
 - `docs/release-token.md`
 - `docs/production-diagnostics.md`
 - `docs/firmware-lifecycle-design.md`
+- `device_server/README.md`

@@ -45,7 +45,7 @@ LIVEKIT_PARTICIPANT_IDENTITY=lichuang-esp32s3
 LIVEKIT_AGENT_NAME=my-agent
 ```
 
-Set token-server runtime secrets in `configs/token_server.local.env`:
+Set device-server runtime secrets in `device_server/configs/device_server.local.env`:
 
 ```env
 LIVEKIT_URL=wss://your-project.livekit.cloud
@@ -68,18 +68,24 @@ The token server script now serves as the first `device server` baseline:
 - diagnostics blob ingest is `POST /v1/diagnostics/blobs`
 - admin summary is `GET /v1/admin/storage`
 
-Run the token server on a reachable machine or server:
+Run the device server on a reachable machine or server:
 
 ```bash
-cp configs/token_server.local.env.example configs/token_server.local.env
-python3 scripts/token_server.py --env-file configs/token_server.local.env
+cp device_server/configs/device_server.local.env.example \
+   device_server/configs/device_server.local.env
+python3 device_server/scripts/device_server.py \
+  --env-file device_server/configs/device_server.local.env
 ```
 
 Or use the bundled background launcher:
 
 ```bash
-bash scripts/token_server_ctl.sh start
+bash device_server/scripts/device_server_ctl.sh start
 ```
+
+For long-running deployment, install:
+
+- `device_server/systemd/livekit-device-server.service`
 
 Health check:
 
@@ -148,4 +154,5 @@ bash scripts/package_firmware.sh
 - `docs/firmware-packaging.md`
 - `docs/firmware-lifecycle-design.md`
 - `docs/device-server.md`
+- `device_server/README.md`
 - `docs/production-diagnostics.md`

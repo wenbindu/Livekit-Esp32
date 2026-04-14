@@ -18,10 +18,11 @@
 - `components/78__esp-wifi-connect`：本地 vendored 的配网页面组件
 - `components/78__xiaozhi-fonts`：本地 vendored 的字体和表情资源
 - `configs/`：板级默认配置、分支自带固件默认配置、本地配置样例文件
+- `device_server/`：独立的 device server workspace，包含部署脚本和 `systemd`
 - `docs/`：调试、打包、模式说明文档
 - `scripts/project.sh`：配置、编译、烧录、串口监控入口
 - `scripts/package_firmware.sh`：按当前 git branch 打包固件
-- `scripts/token_server.py`：本地或远端 device server，兼容 token 签发并支持诊断接口
+- `scripts/token_server.py`：兼容入口，实际会转发到独立的 device server workspace
 - `scripts/debug_uplink_ws_server.py`：开发阶段接收调试音频并保存为 WAV
 
 ## 开源安全说明
@@ -30,6 +31,7 @@
 
 - `configs/livekit.local.env`
 - `configs/token_server.local.env`
+- `device_server/configs/device_server.local.env`
 
 这些文件都已经被 `.gitignore` 忽略，不会进入仓库。
 
@@ -37,6 +39,7 @@
 
 - `configs/livekit.local.env.example`
 - `configs/token_server.local.env.example`
+- `device_server/configs/device_server.local.env.example`
 
 注意：
 
@@ -177,30 +180,33 @@ bash scripts/project.sh flash-monitor
 推荐用于日常开发和生产环境：
 
 ```bash
-cp configs/token_server.local.env.example configs/token_server.local.env
-python3 scripts/token_server.py --env-file configs/token_server.local.env
+cp device_server/configs/device_server.local.env.example \
+   device_server/configs/device_server.local.env
+python3 device_server/scripts/device_server.py \
+  --env-file device_server/configs/device_server.local.env
 ```
 
 如果你希望用 `nohup` 方式后台运行，并自动管理 PID 和日志：
 
 ```bash
-bash scripts/token_server_ctl.sh start
+bash device_server/scripts/device_server_ctl.sh start
 ```
 
-同一个脚本现在也提供了第一版 device server 诊断接口，文档见：
+独立 workspace 里也附带了 `systemd` unit。老的根目录路径仍保留兼容壳，文档见：
 
+- `device_server/README.md`
 - `docs/device-server.md`
 
 建议把设备和服务端配置拆开：
 
 - `configs/livekit.local.env`：设备构建配置、token server 地址、调试地址
-- `configs/token_server.local.env`：token server 运行时密钥、LiveKit API key/secret
+- `device_server/configs/device_server.local.env`：device server 运行时密钥、LiveKit API key/secret
 
 查看状态或停止：
 
 ```bash
-bash scripts/token_server_ctl.sh status
-bash scripts/token_server_ctl.sh stop
+bash device_server/scripts/device_server_ctl.sh status
+bash device_server/scripts/device_server_ctl.sh stop
 ```
 
 如果你要使用正式发布流程，也就是 server 签发 JWT、设备端自动换 token、多次鉴权失败后显示 `AUTH EXPIRED`，请看：

@@ -116,8 +116,8 @@ This baseline does not yet include:
 - deferred diagnostics upload to the server
 - log ring buffer export
 
-The first server-side ingest baseline now exists in `scripts/token_server.py`
-as a device-server shape:
+The first server-side ingest baseline now exists in
+`device_server/scripts/device_server.py` as a device-server shape:
 
 - `POST /v1/diagnostics/events`
 - `POST /v1/diagnostics/blobs`
