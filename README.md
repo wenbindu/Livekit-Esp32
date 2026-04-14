@@ -20,7 +20,7 @@ English | [简体中文](README.zh-CN.md)
 - `configs/`: board/profile defaults, branch-owned firmware defaults, and local config examples
 - `docs/`: development and packaging notes
 - `scripts/project.sh`: configure/build/flash wrapper
-- `scripts/package_firmware.sh`: package the firmware represented by the current git branch
+- `scripts/package_firmware.sh`: package the firmware represented by the current lifecycle branch
 - `scripts/token_server.py`: local or remote token service
 - `scripts/debug_uplink_ws_server.py`: desktop receiver for debug-audio WAV capture
 
@@ -110,40 +110,49 @@ Tracked firmware defaults live in:
 
 - `configs/branch.defaults.env`
 
-That file belongs to the current git branch. Switching branch switches the default firmware behavior.
+That file belongs to the current lifecycle branch. Switching branch switches the
+default lifecycle behavior.
+
+Optional diagnostic presets live in:
+
+- `configs/presets/`
 
 ### 4. Build And Flash
 
-Main branch firmware:
+Development firmware:
 
 ```bash
+git switch dev
 bash scripts/project.sh flash-monitor
 ```
 
-Dedicated debug-audio firmware:
+Development firmware with bidirectional audio trace:
 
 ```bash
-git switch fw-dev-audio-ws
-bash scripts/project.sh flash-monitor
+git switch dev
+FIRMWARE_PRESET=audio-trace bash scripts/project.sh flash-monitor
 ```
 
-Release token-server firmware:
+Production firmware:
 
 ```bash
-git switch fw-release-token
+git switch main
 bash scripts/project.sh flash-monitor
 ```
 
 ## Branch Model
 
-Mainline firmware stays on `main`.
+Lifecycle branches are:
 
-Dedicated firmware branches are:
+- `dev`: main development path
+- `test`: integration and regression validation
+- `main`: production baseline
 
-- `fw-dev-uplink-ws`: export processed uplink audio to a desktop receiver
-- `fw-dev-audio-ws`: export both uplink and downlink audio for WAV inspection
-- `fw-prod-standby`: production-like standby-first behavior
-- `fw-release-token`: release-oriented standby path
+Diagnostic behavior is not managed by long-lived branches anymore. Use presets
+instead:
+
+- `uplink-trace`: export processed uplink audio
+- `audio-trace`: export both uplink and downlink audio
 
 See:
 
@@ -152,6 +161,7 @@ See:
 - `docs/firmware-packaging.md`
 - `docs/debug-audio.md`
 - `docs/release-token.md`
+- `docs/firmware-lifecycle-design.md`
 
 ## Lichuang Board Notes
 
@@ -213,7 +223,7 @@ Generated WAV files are written under `debug_audio_ws/`, which is gitignored.
 
 ## Packaging
 
-Show the current branch-owned package target:
+Show the current lifecycle package target:
 
 ```bash
 bash scripts/package_firmware.sh list
@@ -228,10 +238,10 @@ bash scripts/package_firmware.sh
 Examples:
 
 ```bash
-git switch fw-dev-audio-ws
-bash scripts/package_firmware.sh
+git switch dev
+bash scripts/package_firmware.sh preset audio-trace
 
-git switch fw-release-token
+git switch main
 bash scripts/package_firmware.sh
 ```
 

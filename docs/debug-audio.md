@@ -7,33 +7,29 @@ Use this workflow when you need to inspect both sides of device audio:
 - processed user uplink audio
 - rendered AI downlink audio
 
-This is the recommended development-time audio debugging path for `lichuang_esp32s3`.
+This is a development-time diagnostic path. It is no longer a long-lived branch.
 
 ## Recommended Debug Firmware
 
-Use the dedicated debug-audio branch:
+Use the `dev` branch with the `audio-trace` preset:
 
 ```bash
-git switch fw-dev-audio-ws
+git switch dev
+FIRMWARE_PRESET=audio-trace bash scripts/project.sh flash-monitor
 ```
 
-This firmware keeps normal chat enabled and adds two lightweight debug exports:
-
-- processed user uplink PCM over WebSocket
-- rendered AI downlink PCM over WebSocket
-
-Build and flash it with:
+If you want a reusable diagnostic artifact, package it with:
 
 ```bash
-git switch fw-dev-audio-ws
-bash scripts/project.sh flash-monitor
+git switch dev
+bash scripts/package_firmware.sh preset audio-trace
 ```
 
-If you want a reusable firmware drop, package it with:
+If you only need processed uplink audio, use:
 
 ```bash
-git switch fw-dev-audio-ws
-bash scripts/package_firmware.sh
+git switch dev
+FIRMWARE_PRESET=uplink-trace bash scripts/project.sh flash-monitor
 ```
 
 ## What Gets Captured
@@ -56,19 +52,21 @@ bash scripts/package_firmware.sh
 - source: rendered AI audio before speaker playback
 - position in pipeline: PCM headed into the render/playback path
 
-## Branch Defaults
-
-Use:
-
-```bash
-git switch fw-dev-audio-ws
-```
+## Config Layers
 
 Branch-owned defaults:
 
-- `configs/branch.defaults.env`
+- `configs/branch.defaults.env` on `dev`
 
-This enables:
+Diagnostic preset:
+
+- `configs/presets/audio-trace.env`
+
+Local endpoints:
+
+- `configs/livekit.local.env`
+
+The preset enables:
 
 - `ENABLE_DEBUG_UPLINK_WS=1`
 - `ENABLE_DEBUG_DOWNLINK_WS=1`
@@ -87,7 +85,8 @@ DEBUG_UPLINK_WS_URL=ws://YOUR_MAC_IP:8765/uplink
 DEBUG_DOWNLINK_WS_URL=ws://YOUR_MAC_IP:8765/downlink
 ```
 
-If the board changes Wi-Fi networks, update these URLs to the new reachable host IP before reflashing.
+If the board changes Wi-Fi networks, update these URLs to the new reachable
+host IP before reflashing.
 
 ## Start The Receiver
 
@@ -103,7 +102,8 @@ Stop it with:
 bash scripts/debug_audio_ws_stop.sh
 ```
 
-The start script launches `scripts/debug_uplink_ws_server.py` in the background and writes:
+The start script launches `scripts/debug_uplink_ws_server.py` in the background
+and writes:
 
 - PID file: `.run/debug_audio_ws.pid`
 - log file: `.run/debug_audio_ws.log`
@@ -121,99 +121,29 @@ python3 scripts/debug_uplink_ws_server.py \
   --session-idle-seconds 20
 ```
 
-The receiver writes WAV files into:
-
-- `debug_audio_ws/`
-
-Generated files are gitignored.
-
-## Flash And Monitor
-
-Build, flash, and monitor with:
-
-```bash
-git switch fw-dev-audio-ws
-bash scripts/project.sh flash-monitor
-```
-
-If you only need serial logs:
-
-```bash
-git switch fw-dev-audio-ws
-bash scripts/project.sh monitor
-```
-
-## Expected Serial Logs
-
-Healthy startup should include:
-
-- `AUD_SRC: Start to fetch audio src data now`
-- `Room state changed: Connected`
-- `I2S_RENDER: open channel:1 sample_rate:16000 bits:16`
-
-If the room is connected and your receiver is writing non-empty WAV files for both `uplink` and `downlink`, both capture directions are live.
-
-## Output Files
-
-Output directory:
-
-- `debug_audio_ws/`
-
-Typical filenames:
-
-- `uplink_YYYYMMDD_HHMMSS.wav`
-- `downlink_YYYYMMDD_HHMMSS.wav`
-
-Pairing behavior:
-
-- one conversation session uses one shared timestamp for both files
-- short websocket reconnects append to the same pair instead of creating many tiny files
-- a new timestamp starts only after the receiver sees no active stream for the idle timeout window
-
-This means `uplink_<ts>.wav` and `downlink_<ts>.wav` are intended to be analyzed as a pair.
-
 ## Practical Workflow
 
 1. Start the local WS receiver with `bash scripts/debug_audio_ws_start.sh`.
-2. Switch to `fw-dev-audio-ws` and flash it.
-3. Wait for both websocket connections.
-4. Speak to the device for 20 to 30 seconds.
-5. Trigger an AI response long enough to exercise playback.
-6. Stop the WS receiver if you are done.
+2. Switch to `dev`.
+3. Flash with `FIRMWARE_PRESET=audio-trace`.
+4. Wait for both WebSocket connections.
+5. Speak to the device for 20 to 30 seconds.
+6. Trigger an AI response long enough to exercise playback.
 7. Inspect the newest same-timestamp `uplink_*.wav` and `downlink_*.wav`.
 
-## How To Interpret Results
+## Merge Rule
 
-If `uplink` sounds noisy or hollow:
+When you find a bug while using `audio-trace`:
 
-- suspect microphone gain
-- suspect AEC/reference routing
-- suspect local speech enhancement settings
+1. separate diagnostic-only changes from functional fixes
+2. merge functional fixes back to `dev`
+3. promote `dev -> test -> main`
 
-If `uplink` sounds clean but agent response is bad:
-
-- suspect STT or cloud-side turn-taking
-
-If `downlink` file sounds clean but the speaker sounds wrong:
-
-- suspect local playback path
-- suspect speaker hardware
-- suspect render gain or amplifier settings
-
-If `downlink` file already sounds wrong:
-
-- suspect remote TTS or received audio path
-
-## Current Known Behavior
-
-- `uplink` is often longer than `downlink`, because the user may speak for longer than the AI responds.
-- A new file pair starts after the receiver idle timeout expires, default `20s`.
-- Short `44B` WAV files mean only a WAV header was written and no PCM frames arrived.
-- `No model to load` for wake models does not block this debug workflow.
+Do not keep permanent functional fixes only inside a trace-only workflow.
 
 ## Troubleshooting
 
-### No websocket connection
+### No WebSocket connection
 
 Check:
 
@@ -221,44 +151,16 @@ Check:
 - `DEBUG_UPLINK_WS_URL` and `DEBUG_DOWNLINK_WS_URL` point to the current host IP
 - local firewall is not blocking port `8765`
 
-### `44B` uplink WAV only
-
-Check serial logs for:
-
-- `AUD_SRC: Start to fetch audio src data now`
-- `Published audio frame: count=...`
-
-If these are missing, the capture path did not fully start.
-
 ### Frequent reconnects
 
 Check:
 
 - LiveKit room stability
 - Wi-Fi quality
-- debug websocket host reachability
-
-### Files still split too often
-
-Check:
-
-- whether the receiver was restarted mid-session
-- whether the board lost reachability to the host IP
-- whether the conversation had a long silent gap larger than `--session-idle-seconds`
-
-If needed, increase the idle window in the manual receiver command.
-
-### Receiver start script fails immediately
-
-Check:
-
-- whether port `8765` is already occupied by another local service
-- whether you need to override `DEBUG_AUDIO_WS_PORT` for a temporary test
-- if you change the port, update `DEBUG_UPLINK_WS_URL` and `DEBUG_DOWNLINK_WS_URL` to match before flashing
+- debug WebSocket host reachability
 
 ## Related Docs
 
-- `README.md`
-- `README.zh-CN.md`
+- `docs/branch-workflow.md`
 - `docs/firmware-packaging.md`
-- `docs/profiles.md`
+- `docs/firmware-lifecycle-design.md`
