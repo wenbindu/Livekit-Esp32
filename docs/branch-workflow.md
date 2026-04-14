@@ -2,44 +2,75 @@
 
 ## Goal
 
-Different firmware paths are now managed by git branch. The old scenario overlay
-workflow has been removed.
+Different firmware lifecycle states are managed by branch, while temporary
+diagnostic behavior is managed by preset.
 
-Mainline firmware stays on:
+Lifecycle branches are:
 
+- `dev`
+- `test`
 - `main`
 
-Dedicated firmware branches are:
+Diagnostic presets are loaded only when needed:
 
-- `fw-dev-uplink-ws`
-- `fw-dev-audio-ws`
-- `fw-prod-standby`
-- `fw-release-token`
+- `uplink-trace`
+- `audio-trace`
 
 ## How It Works
 
 - `configs/livekit.local.env`: machine-local secrets and endpoints, never committed
-- `configs/branch.defaults.env`: tracked defaults owned by the current branch
+- `configs/branch.defaults.env`: tracked lifecycle defaults owned by the current branch
+- `configs/presets/<name>.env`: optional diagnostic overlay selected with `FIRMWARE_PRESET`
 
-`scripts/project.sh` automatically loads both files. The current branch therefore
-defines the default firmware behavior.
+`scripts/project.sh` and `scripts/package_firmware.sh` automatically load the
+local env and the current branch defaults. When `FIRMWARE_PRESET` is set, they
+also load the preset overlay after the branch defaults.
 
 ## Daily Commands
 
-Build and flash the current branch:
+Build and flash the current lifecycle branch:
 
 ```bash
 bash scripts/project.sh flash-monitor
 ```
 
-Package the current branch:
+Build and flash with a temporary diagnostic preset:
+
+```bash
+FIRMWARE_PRESET=audio-trace bash scripts/project.sh flash-monitor
+```
+
+Package the current lifecycle branch:
 
 ```bash
 bash scripts/package_firmware.sh
 ```
 
-Inspect the current branch package identity:
+Package the current lifecycle branch with a diagnostic preset:
+
+```bash
+bash scripts/package_firmware.sh preset audio-trace
+```
+
+Inspect the current package identity:
 
 ```bash
 bash scripts/package_firmware.sh list
 ```
+
+List available presets:
+
+```bash
+bash scripts/package_firmware.sh presets
+```
+
+## Promotion Rule
+
+Functional work should move through:
+
+1. `dev`
+2. `test`
+3. `main`
+
+Do not keep functional fixes inside a temporary debug-only branch or preset-only
+artifact.

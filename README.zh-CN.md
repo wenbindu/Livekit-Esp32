@@ -110,40 +110,47 @@ token server 运行时密钥单独放在：
 
 - `configs/branch.defaults.env`
 
-这个文件属于当前 branch。切换 branch，就切换默认固件行为。
+这个文件属于当前生命周期 branch。切换 branch，就切换默认生命周期行为。
+
+可选的诊断 preset 放在：
+
+- `configs/presets/`
 
 ### 4. 编译与烧录
 
-`main` 分支主线固件：
+开发固件：
 
 ```bash
+git switch dev
 bash scripts/project.sh flash-monitor
 ```
 
-双向音频导出调试固件：
+带双向音频 trace 的开发固件：
 
 ```bash
-git switch fw-dev-audio-ws
-bash scripts/project.sh flash-monitor
+git switch dev
+FIRMWARE_PRESET=audio-trace bash scripts/project.sh flash-monitor
 ```
 
-发布版 token-server 固件：
+生产固件：
 
 ```bash
-git switch fw-release-token
+git switch main
 bash scripts/project.sh flash-monitor
 ```
 
 ## Branch 管理模型
 
-主线固件保留在 `main`。
+生命周期 branch 只保留：
 
-专用固件分支有：
+- `dev`：主开发路径
+- `test`：集成验证与回归验证
+- `main`：生产基线
 
-- `fw-dev-uplink-ws`：导出处理后的上行音频
-- `fw-dev-audio-ws`：同时导出上行和下行音频，用于 WAV 分析
-- `fw-prod-standby`：更接近生产模式的待机流程
-- `fw-release-token`：偏发布用途的待机固件
+诊断能力不再使用长期 branch，而是使用 preset：
+
+- `uplink-trace`：导出处理后的上行音频
+- `audio-trace`：同时导出上行和下行音频
 
 更多说明见：
 
@@ -152,6 +159,7 @@ bash scripts/project.sh flash-monitor
 - `docs/firmware-packaging.md`
 - `docs/debug-audio.md`
 - `docs/release-token.md`
+- `docs/firmware-lifecycle-design.md`
 
 ## 力创开发板注意事项
 
@@ -228,10 +236,10 @@ bash scripts/package_firmware.sh
 示例：
 
 ```bash
-git switch fw-dev-audio-ws
-bash scripts/package_firmware.sh
+git switch dev
+bash scripts/package_firmware.sh preset audio-trace
 
-git switch fw-release-token
+git switch main
 bash scripts/package_firmware.sh
 ```
 

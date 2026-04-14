@@ -10,6 +10,7 @@ GENERATED_DEFAULTS="sdkconfig.defaults.generated"
 CONFIG_STAMP_FILE=".project_config.stamp"
 DEFAULT_ENV_FILE="${PROJECT_DIR}/configs/livekit.local.env"
 DEFAULT_BRANCH_ENV_FILE="${PROJECT_DIR}/configs/branch.defaults.env"
+DEFAULT_PRESET_DIR="${PROJECT_DIR}/configs/presets"
 
 usage() {
     cat <<'EOF'
@@ -30,12 +31,16 @@ Environment:
   BOARD               Board config name, default: lichuang_esp32s3
   PROFILE             Build profile name, default: dev
   CONFIG_ENV_FILE     Path to local env file, default: configs/livekit.local.env
+  FIRMWARE_PRESET     Optional diagnostic preset from configs/presets/<name>.env
   ESPPORT             Override auto-detected serial port
 
 Branch Defaults:
   configs/branch.defaults.env is auto-loaded after the local env file.
-  Each firmware branch owns this tracked file, so switching git branch switches
-  the default firmware path.
+  Lifecycle branches own only their baseline behavior.
+
+Preset Overlays:
+  When FIRMWARE_PRESET is set, configs/presets/<name>.env is loaded after the
+  branch defaults so temporary diagnostics can override branch behavior.
 
 Config env keys:
   AUTH_MODE=device_jwt|token_server|sandbox|static_token
@@ -109,10 +114,31 @@ load_optional_env() {
     set +a
 }
 
+resolve_preset_env_file() {
+    local preset_name="${FIRMWARE_PRESET:-}"
+    if [[ -z "${preset_name}" ]]; then
+        return 0
+    fi
+
+    local preset_file="${DEFAULT_PRESET_DIR}/${preset_name}.env"
+    if [[ ! -f "${preset_file}" ]]; then
+        echo "Unknown FIRMWARE_PRESET=${preset_name}. Expected ${preset_file}" >&2
+        return 1
+    fi
+
+    printf '%s\n' "${preset_file}"
+}
+
 load_config_env() {
     local env_file="${CONFIG_ENV_FILE:-${DEFAULT_ENV_FILE}}"
     load_optional_env "${env_file}"
     load_optional_env "${DEFAULT_BRANCH_ENV_FILE}"
+
+    local preset_file=""
+    preset_file="$(resolve_preset_env_file)"
+    if [[ -n "${preset_file}" ]]; then
+        load_optional_env "${preset_file}"
+    fi
 }
 
 detect_port() {
@@ -300,6 +326,7 @@ current_config_stamp() {
     {
         printf 'board=%s\n' "${board}"
         printf 'profile=%s\n' "${profile}"
+        printf 'preset=%s\n' "${FIRMWARE_PRESET:-}"
         for file in \
             "${PROJECT_DIR}/configs/sdkconfig.defaults.base" \
             "${board_defaults}" \

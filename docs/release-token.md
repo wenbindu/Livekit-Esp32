@@ -1,8 +1,8 @@
-# Release Token Firmware
+# Production Token-Server Firmware
 
 ## Purpose
 
-`fw-release-token` is the production-oriented firmware branch for `lichuang_esp32s3`.
+`main` is the production-oriented firmware branch for `lichuang_esp32s3`.
 
 It keeps the LiveKit API secret on the server side only:
 
@@ -12,19 +12,20 @@ It keeps the LiveKit API secret on the server side only:
 - if the token is rejected or expired, the device fetches a fresh token and retries
 - after repeated auth failures, the device shows `AUTH EXPIRED`
 
-This is the recommended release path for devices you plan to ship or deploy outside your development desk.
+This is the recommended release path for devices you plan to ship or deploy
+outside your development desk.
 
 ## Branch Defaults
 
-- `configs/branch.defaults.env`
+- `configs/branch.defaults.env` on `main`
 
 ## What It Enables
 
 - `PROFILE=prod`
 - `AUTH_MODE=token_server`
 - `START_IN_STANDBY=1`
-- no debug uplink websocket export
-- no debug downlink websocket export
+- no debug uplink WebSocket export
+- no debug downlink WebSocket export
 - no local debug WAV export
 
 ## Required Local Or Server Config
@@ -89,7 +90,8 @@ curl http://YOUR_SERVER_IP:8790/healthz
 6. Device requests a token from the token server
 7. Device joins the LiveKit room
 
-If the board looks idle right after boot, that is expected for `release-token`: it will not try to join a room until `BOOT` is pressed.
+If the board looks idle right after boot, that is expected for `main`: it will
+not try to join a room until `BOOT` is pressed.
 
 ### Expired or invalid token
 
@@ -106,14 +108,14 @@ If the board looks idle right after boot, that is expected for `release-token`: 
 ## Build And Flash
 
 ```bash
-git switch fw-release-token
+git switch main
 bash scripts/project.sh flash-monitor
 ```
 
 ## Package A Release Artifact
 
 ```bash
-git switch fw-release-token
+git switch main
 bash scripts/package_firmware.sh
 ```
 
@@ -130,3 +132,4 @@ bash scripts/package_firmware.sh
 - `README.zh-CN.md`
 - `docs/profiles.md`
 - `docs/firmware-packaging.md`
+- `docs/firmware-lifecycle-design.md`

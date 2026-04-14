@@ -2,22 +2,27 @@
 
 ## Packaging Rule
 
-Package the firmware represented by the current git branch.
+Package the firmware represented by the current lifecycle branch. Add a preset
+only when you intentionally need a diagnostic artifact.
 
-Firmware behavior now comes from:
+Firmware behavior comes from:
 
 1. `configs/sdkconfig.defaults.board.<board>`
 2. `configs/sdkconfig.defaults.<profile>`
 3. `configs/branch.defaults.env`
-4. `configs/livekit.local.env`
+4. `configs/presets/<preset>.env` when `FIRMWARE_PRESET` is set
+5. `configs/livekit.local.env`
 
 ## Branch Map
 
-- `main`: normal daily firmware
-- `fw-dev-uplink-ws`: processed uplink debug export
-- `fw-dev-audio-ws`: uplink + downlink debug export
-- `fw-prod-standby`: production-like standby behavior
-- `fw-release-token`: release-oriented standby path
+- `dev`: daily development firmware
+- `test`: integration and pre-release firmware
+- `main`: production baseline firmware
+
+## Preset Map
+
+- `uplink-trace`: processed uplink audio export over WebSocket
+- `audio-trace`: uplink + downlink audio export over WebSocket
 
 ## Commands
 
@@ -27,35 +32,40 @@ Build and flash the current branch:
 bash scripts/project.sh flash-monitor
 ```
 
+Build and flash with a diagnostic preset:
+
+```bash
+FIRMWARE_PRESET=audio-trace bash scripts/project.sh flash-monitor
+```
+
 Package the current branch:
 
 ```bash
 bash scripts/package_firmware.sh
 ```
 
-Inspect the current branch package identity:
+Package the current branch with a diagnostic preset:
+
+```bash
+bash scripts/package_firmware.sh preset audio-trace
+```
+
+Inspect the current package identity:
 
 ```bash
 bash scripts/package_firmware.sh list
 ```
 
-Example debug-audio package:
+List available presets:
 
 ```bash
-git switch fw-dev-audio-ws
-bash scripts/package_firmware.sh
-```
-
-Example release package:
-
-```bash
-git switch fw-release-token
-bash scripts/package_firmware.sh
+bash scripts/package_firmware.sh presets
 ```
 
 Each package is written to:
 
 - `dist/<timestamp>_<board>_<profile>_<firmware_variant>/`
+- `dist/<timestamp>_<board>_<profile>_<firmware_variant>_preset-<name>/` when a preset is used
 
 Included files:
 
@@ -80,4 +90,5 @@ Do not place real credentials in:
 - `configs/livekit.local.env.example`
 - `configs/token_server.local.env.example`
 - `configs/branch.defaults.env`
+- `configs/presets/*.env`
 - tracked Markdown docs
