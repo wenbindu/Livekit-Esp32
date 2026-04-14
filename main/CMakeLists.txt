@@ -1,6 +1,7 @@
 idf_component_register(
     SRCS
         "app_main.c"
+        "app_diagnostics.c"
         "lichuang_audio_board.c"
         "lichuang_ui.cc"
         "livekit_app.c"

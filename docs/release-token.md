@@ -27,6 +27,7 @@ outside your development desk.
 - no debug uplink WebSocket export
 - no debug downlink WebSocket export
 - no local debug WAV export
+- persistent startup diagnostics baseline
 
 ## Required Local Or Server Config
 
@@ -125,6 +126,7 @@ bash scripts/package_firmware.sh
 - token lifetime is controlled server-side
 - invalid or expired device auth can be revoked without reflashing every board
 - release firmware stays closer to production security practice
+- startup diagnostics now retain reset reason and lifecycle breadcrumbs across reboot
 
 ## Related Docs
 
@@ -133,3 +135,4 @@ bash scripts/package_firmware.sh
 - `docs/profiles.md`
 - `docs/firmware-packaging.md`
 - `docs/firmware-lifecycle-design.md`
+- `docs/production-diagnostics.md`

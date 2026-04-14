@@ -1,7 +1,9 @@
 #include <stdbool.h>
+#include <inttypes.h>
 #include <sys/time.h>
 #include <time.h>
 
+#include "app_diagnostics.h"
 #include "driver/gpio.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -217,6 +219,7 @@ static void wait_for_chat_button_press(void)
 {
     bool observed_press = false;
 
+    app_diagnostics_mark_boot_stable("standby_wait");
     lichuang_ui_show_message("STANDBY", "PRESS BOOT", "TO START CHAT", ":|");
     ESP_LOGI(TAG, "Standby mode enabled; waiting for BOOT button");
 
@@ -225,6 +228,7 @@ static void wait_for_chat_button_press(void)
         if (pressed) {
             observed_press = true;
         } else if (observed_press) {
+            app_diagnostics_note_stage("chat_button_pressed");
             break;
         }
         vTaskDelay(pdMS_TO_TICKS(25));
@@ -237,21 +241,30 @@ static void app_task(void *arg)
     esp_log_level_set("*", ESP_LOG_INFO);
 
     init_nvs();
+    app_diagnostics_init();
+    app_diagnostics_log_boot_summary();
+    app_diagnostics_note_stage("system_init");
     livekit_system_init();
 
+    app_diagnostics_note_stage("wifi_connect");
     if (!lk_example_network_connect()) {
+        app_diagnostics_note_failure("wifi_failed", "network_connect");
         ESP_LOGE(TAG, "Wi-Fi connection failed");
         lichuang_ui_show_message("WI-FI FAILED", "CHECK NETWORK", "RESTART TO RETRY", ":(");
         return;
     }
 
+    app_diagnostics_note_stage("wifi_connected");
+
 #if CONFIG_LK_EXAMPLE_START_IN_STANDBY
     wait_for_chat_button_press();
 #endif
 
+    app_diagnostics_note_stage("time_sync");
     lichuang_ui_show_message("LIVEKIT", "CHECKING CLOCK", "BACKGROUND NTP", ":|");
     wait_for_time_sync();
 
+    app_diagnostics_note_stage("audio_init");
     ESP_ERROR_CHECK(lichuang_audio_board_init());
     ESP_ERROR_CHECK(livekit_media_init());
 
@@ -262,11 +275,13 @@ static void app_task(void *arg)
 
 #if CONFIG_LK_EXAMPLE_LOCAL_AUDIO_UPLINK_ONLY
     if (CONFIG_LK_EXAMPLE_DEBUG_UPLINK_WS_URL[0] == '\0') {
+        app_diagnostics_note_failure("local_audio_ws_missing", "debug_uplink_ws_url");
         ESP_LOGE(TAG, "Local audio uplink mode enabled but websocket URL is empty");
         lichuang_ui_show_message("LOCAL AUDIO", "WS URL MISSING", "SET DEBUG_UPLINK_WS_URL", ":(");
         return;
     }
 
+    app_diagnostics_mark_boot_stable("local_audio_only");
     lichuang_ui_show_message("LOCAL AUDIO", "STREAMING TO HOST", "WS UPLINK ACTIVE", ":)");
     ESP_LOGI(TAG, "Local audio uplink only mode enabled; skipping LiveKit room join");
     while (true) {
@@ -274,9 +289,11 @@ static void app_task(void *arg)
     }
 #endif
 
+    app_diagnostics_note_stage("room_join_start");
     lichuang_ui_show_message("LIVEKIT", "PREPARING AUDIO", "JOINING ROOM", ":)");
     bool join_started = livekit_app_join_room();
     if (!join_started) {
+        app_diagnostics_note_failure("room_start_failed", "join_room_returned_false");
         lichuang_ui_show_message("LIVEKIT", "ROOM START FAILED", "CHECK SERIAL LOG", ":(");
     }
 

@@ -9,6 +9,7 @@
 #include <sys/socket.h>
 #include <string.h>
 
+#include "app_diagnostics.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/idf_additions.h"
@@ -1206,6 +1207,7 @@ static void set_token_server_fetch_error_text(token_server_fetch_diag_t *diag, c
 
 static void token_server_show_retry_message(const char *line1, const char *line2)
 {
+    app_diagnostics_note_failure("token_retry", line1);
     lichuang_ui_show_message(
         "LIVEKIT",
         line1 != NULL ? line1 : "TOKEN RETRY",
@@ -1216,6 +1218,7 @@ static void token_server_show_retry_message(const char *line1, const char *line2
 static void token_server_show_auth_expired(void)
 {
     runtime_clear_token_refresh_pending();
+    app_diagnostics_note_failure("auth_expired", "token_server_auth_failures");
     lichuang_ui_show_message("LIVEKIT", "AUTH EXPIRED", "CONTACT ADMIN", ":(");
 }
 
@@ -2146,6 +2149,7 @@ static bool create_room_handle(void)
     };
 
     if (livekit_room_create(&s_room_handle, &room_options) != LIVEKIT_ERR_NONE) {
+        app_diagnostics_note_failure("room_create_failed", "livekit_room_create");
         ESP_LOGE(TAG, "Failed to create room");
         lichuang_ui_show_message("LIVEKIT", "ROOM CREATE FAILED", "CHECK SERIAL LOG", ":(");
         return false;
@@ -2184,10 +2188,12 @@ static void token_server_connect_task(void *arg)
         }
 
         reset_connection_runtime_state(false);
+        app_diagnostics_note_stage("token_fetch");
         destroy_room();
         log_token_server_diagnostics(CONFIG_LK_EXAMPLE_TOKEN_SERVER_URL);
 
         if (!fetch_token_server_credentials(&credentials, &diag)) {
+            app_diagnostics_note_failure("token_fetch_failed", token_server_fetch_result_str(diag.result));
             ESP_LOGW(TAG,
                 "Token fetch failed: result=%s http_status=%d error=%s",
                 token_server_fetch_result_str(diag.result),
@@ -2208,14 +2214,17 @@ static void token_server_connect_task(void *arg)
         }
 
         if (!create_room_handle()) {
+            app_diagnostics_note_failure("room_create_failed", "token_supervisor");
             token_server_show_retry_message("ROOM CREATE", "RETRYING SOON");
             delay_ms = CONFIG_LK_EXAMPLE_TOKEN_SERVER_RETRY_DELAY_MS;
             continue;
         }
 
         log_livekit_network_diagnostics(credentials.server_url);
+        app_diagnostics_note_stage("room_connect_call");
         livekit_err_t connect_res = livekit_room_connect(s_room_handle, credentials.server_url, credentials.token);
         if (connect_res != LIVEKIT_ERR_NONE) {
+            app_diagnostics_note_failure("room_connect_failed", "livekit_room_connect");
             ESP_LOGE(TAG, "Failed to connect to room with refreshed token");
             destroy_room();
             token_server_show_retry_message("CONNECT FAILED", "RETRYING SOON");
@@ -2349,12 +2358,15 @@ static void on_state_changed(livekit_connection_state_t state, void *ctx)
 
     switch (state) {
     case LIVEKIT_CONNECTION_STATE_CONNECTING:
+        app_diagnostics_note_stage("room_connecting");
         lichuang_ui_show_message("LIVEKIT", "CONNECTING", active_room_name(), ":)");
         break;
     case LIVEKIT_CONNECTION_STATE_RECONNECTING:
+        app_diagnostics_note_failure("room_reconnecting", livekit_failure_reason_str(reason));
         lichuang_ui_show_message("LIVEKIT", "RECONNECTING", active_room_name(), ":|");
         break;
     case LIVEKIT_CONNECTION_STATE_CONNECTED:
+        app_diagnostics_mark_boot_stable("room_connected");
         log_heap_state("room-connected");
         runtime_clear_auth_failure_state();
         ESP_ERROR_CHECK_WITHOUT_ABORT(lichuang_ui_resume());
@@ -2367,6 +2379,7 @@ static void on_state_changed(livekit_connection_state_t state, void *ctx)
         }
         break;
     case LIVEKIT_CONNECTION_STATE_DISCONNECTED:
+        app_diagnostics_note_failure("room_disconnected", livekit_failure_reason_str(reason));
         ESP_ERROR_CHECK_WITHOUT_ABORT(lichuang_ui_resume());
         if (runtime_token_refresh_pending()) {
             lichuang_ui_show_message("LIVEKIT", "REFRESHING TOKEN", active_room_name(), ":|");
@@ -2375,6 +2388,7 @@ static void on_state_changed(livekit_connection_state_t state, void *ctx)
         lichuang_ui_show_message("LIVEKIT", "DISCONNECTED", "PRESS RESET", ":(");
         break;
     case LIVEKIT_CONNECTION_STATE_FAILED:
+        app_diagnostics_note_failure("room_failed", livekit_failure_reason_str(reason));
         ESP_ERROR_CHECK_WITHOUT_ABORT(lichuang_ui_resume());
 #if CONFIG_LK_EXAMPLE_USE_TOKEN_SERVER
         if (handle_token_server_room_auth_failure(reason)) {
@@ -2573,6 +2587,7 @@ bool livekit_app_join_room(void)
     }
 
     if (!have_credentials()) {
+        app_diagnostics_note_failure("missing_credentials", "menuconfig");
         lichuang_ui_show_message("LIVEKIT", "MISSING CREDENTIALS", "CHECK MENUCONFIG", ":(");
         return false;
     }
@@ -2613,6 +2628,7 @@ bool livekit_app_join_room(void)
     log_livekit_network_diagnostics(NULL);
 
     if (!livekit_sandbox_generate(&sandbox_opts, &res)) {
+        app_diagnostics_note_failure("token_failed", "sandbox");
         ESP_LOGE(TAG, "Failed to generate sandbox token");
         lichuang_ui_show_message("LIVEKIT", "TOKEN FAILED", "SANDBOX ERROR", ":(");
         destroy_room();
@@ -2620,6 +2636,7 @@ bool livekit_app_join_room(void)
     }
 
     log_livekit_network_diagnostics(res.server_url);
+    app_diagnostics_note_stage("room_connect_call");
     connect_res = livekit_room_connect(s_room_handle, res.server_url, res.token);
     livekit_sandbox_res_free(&res);
 #elif CONFIG_LK_EXAMPLE_USE_DEVICE_JWT
@@ -2630,22 +2647,26 @@ bool livekit_app_join_room(void)
 
     log_livekit_network_diagnostics(CONFIG_LK_EXAMPLE_SERVER_URL);
     if (!build_device_jwt_credentials(&credentials)) {
+        app_diagnostics_note_failure("jwt_build_failed", "device_jwt");
         ESP_LOGE(TAG, "Failed to build device JWT");
         lichuang_ui_show_message("LIVEKIT", "JWT BUILD FAILED", "CHECK CLOCK OR SECRET", ":(");
         destroy_room();
         return false;
     }
 
+    app_diagnostics_note_stage("room_connect_call");
     connect_res = livekit_room_connect(
         s_room_handle,
         credentials.server_url,
         credentials.token);
 #elif CONFIG_LK_EXAMPLE_USE_TOKEN_SERVER
     if (!schedule_token_server_connect_task(0)) {
+        app_diagnostics_note_failure("token_task_failed", "schedule_token_connect_task");
         ESP_LOGE(TAG, "Failed to start token-server connect supervisor");
         lichuang_ui_show_message("LIVEKIT", "TOKEN TASK FAILED", "CHECK HEAP", ":(");
         return false;
     }
+    app_diagnostics_note_stage("token_fetch");
     lichuang_ui_show_message("LIVEKIT", "FETCHING TOKEN", active_room_name(), ":|");
     return true;
 #elif CONFIG_LK_EXAMPLE_USE_PREGENERATED
@@ -2653,6 +2674,7 @@ bool livekit_app_join_room(void)
         return false;
     }
     log_livekit_network_diagnostics(CONFIG_LK_EXAMPLE_SERVER_URL);
+    app_diagnostics_note_stage("room_connect_call");
     connect_res = livekit_room_connect(
         s_room_handle,
         CONFIG_LK_EXAMPLE_SERVER_URL,
@@ -2660,6 +2682,7 @@ bool livekit_app_join_room(void)
 #endif
 
     if (connect_res != LIVEKIT_ERR_NONE) {
+        app_diagnostics_note_failure("connect_call_failed", "check_token_or_url");
         ESP_LOGE(TAG, "Failed to connect to room");
         lichuang_ui_show_message("LIVEKIT", "CONNECT CALL FAILED", "CHECK TOKEN OR URL", ":(");
         destroy_room();
