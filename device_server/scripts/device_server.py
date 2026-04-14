@@ -53,11 +53,6 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="LiveKit device server for livekit-esp32s3")
     parser.add_argument("--host", default=None)
     parser.add_argument("--port", type=int, default=None)
-    parser.add_argument("--path", default=None, help="legacy token path, default: /token")
-    parser.add_argument("--auth-path", default=None, help="device auth API path, default: /v1/auth/token")
-    parser.add_argument("--event-path", default=None, help="diagnostics event ingest path")
-    parser.add_argument("--blob-path", default=None, help="diagnostics blob ingest path")
-    parser.add_argument("--admin-path", default=None, help="admin storage summary path")
     parser.add_argument("--env-file", default="configs/device_server.local.env")
     parser.add_argument("--ttl-seconds", type=int, default=None)
     parser.add_argument("--data-dir", default=None)
@@ -114,14 +109,6 @@ def env_or_default_int_aliases(arg_value: int | None, env_names: tuple[str, ...]
         if raw is not None and raw != "":
             return int(raw)
     return default
-
-
-def normalize_path(path: str) -> str:
-    if not path:
-        return "/"
-    if not path.startswith("/"):
-        return f"/{path}"
-    return path
 
 
 def compact_json(value: Any) -> str:
@@ -597,25 +584,6 @@ class DeviceHandler(BaseHTTPRequestHandler):
 def build_service_config(args: argparse.Namespace) -> tuple[str, int, DeviceServiceConfig]:
     host = env_or_default_aliases(args.host, ("DEVICE_SERVER_HOST", "TOKEN_SERVER_HOST"), "0.0.0.0")
     port = env_or_default_int_aliases(args.port, ("DEVICE_SERVER_PORT", "TOKEN_SERVER_PORT"), 8790)
-    legacy_token_path = normalize_path(
-        env_or_default_aliases(
-            args.path,
-            ("DEVICE_SERVER_LEGACY_TOKEN_PATH", "TOKEN_SERVER_HTTP_PATH"),
-            DEFAULT_LEGACY_TOKEN_PATH,
-        )
-    )
-    auth_path = normalize_path(
-        env_or_default(args.auth_path, "DEVICE_SERVER_AUTH_PATH", DEFAULT_AUTH_PATH)
-    )
-    event_path = normalize_path(
-        env_or_default(args.event_path, "DEVICE_SERVER_EVENT_PATH", DEFAULT_EVENT_PATH)
-    )
-    blob_path = normalize_path(
-        env_or_default(args.blob_path, "DEVICE_SERVER_BLOB_PATH", DEFAULT_BLOB_PATH)
-    )
-    admin_path = normalize_path(
-        env_or_default(args.admin_path, "DEVICE_SERVER_ADMIN_PATH", DEFAULT_ADMIN_PATH)
-    )
     ttl_seconds = env_or_default_int_aliases(
         args.ttl_seconds,
         ("DEVICE_SERVER_TTL_SECONDS", "TOKEN_SERVER_TTL_SECONDS"),
@@ -633,11 +601,11 @@ def build_service_config(args: argparse.Namespace) -> tuple[str, int, DeviceServ
         DEFAULT_MAX_BLOB_BYTES,
     )
     config = DeviceServiceConfig(
-        legacy_token_path=legacy_token_path,
-        auth_path=auth_path,
-        event_path=event_path,
-        blob_path=blob_path,
-        admin_path=admin_path,
+        legacy_token_path=DEFAULT_LEGACY_TOKEN_PATH,
+        auth_path=DEFAULT_AUTH_PATH,
+        event_path=DEFAULT_EVENT_PATH,
+        blob_path=DEFAULT_BLOB_PATH,
+        admin_path=DEFAULT_ADMIN_PATH,
         ttl_seconds=ttl_seconds,
         data_dir=data_dir,
         max_event_bytes=max_event_bytes,

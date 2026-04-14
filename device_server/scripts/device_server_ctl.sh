@@ -11,14 +11,9 @@ LOG_FILE="${DEVICE_SERVER_LOG_FILE:-${RUN_DIR}/device_server.log}"
 
 HOST="${DEVICE_SERVER_HOST:-${TOKEN_SERVER_HOST:-0.0.0.0}}"
 PORT="${DEVICE_SERVER_PORT:-${TOKEN_SERVER_PORT:-8790}}"
-TOKEN_PATH="${DEVICE_SERVER_LEGACY_TOKEN_PATH:-${TOKEN_SERVER_HTTP_PATH:-/token}}"
 TTL_SECONDS="${DEVICE_SERVER_TTL_SECONDS:-${TOKEN_SERVER_TTL_SECONDS:-3600}}"
 ENV_FILE="${DEVICE_SERVER_ENV_FILE:-${TOKEN_SERVER_ENV_FILE:-${PROJECT_DIR}/configs/device_server.local.env}}"
 DISPLAY_HOST="${DEVICE_SERVER_PUBLIC_HOST:-${TOKEN_SERVER_PUBLIC_HOST:-${HOST}}}"
-AUTH_PATH="${DEVICE_SERVER_AUTH_PATH:-/v1/auth/token}"
-EVENT_PATH="${DEVICE_SERVER_EVENT_PATH:-/v1/diagnostics/events}"
-BLOB_PATH="${DEVICE_SERVER_BLOB_PATH:-/v1/diagnostics/blobs}"
-ADMIN_PATH="${DEVICE_SERVER_ADMIN_PATH:-/v1/admin/storage}"
 DATA_DIR="${DEVICE_SERVER_DATA_DIR:-${PROJECT_DIR}/.run/device_server}"
 MAX_EVENT_BYTES="${DEVICE_SERVER_MAX_EVENT_BYTES:-65536}"
 MAX_BLOB_BYTES="${DEVICE_SERVER_MAX_BLOB_BYTES:-1048576}"
@@ -35,21 +30,17 @@ Usage:
 Environment:
   DEVICE_SERVER_HOST       Bind host, default: 0.0.0.0
   DEVICE_SERVER_PORT       Bind port, default: 8790
-  DEVICE_SERVER_LEGACY_TOKEN_PATH Legacy token path, default: /token
   DEVICE_SERVER_TTL_SECONDS JWT TTL, default: 3600
   DEVICE_SERVER_ENV_FILE   Env file, default: device_server/configs/device_server.local.env
   DEVICE_SERVER_PUBLIC_HOST Optional display host for printed URLs
-  DEVICE_SERVER_AUTH_PATH  Auth API path, default: /v1/auth/token
-  DEVICE_SERVER_EVENT_PATH Diagnostics event ingest path
-  DEVICE_SERVER_BLOB_PATH  Diagnostics blob ingest path
-  DEVICE_SERVER_ADMIN_PATH Admin summary path
   DEVICE_SERVER_DATA_DIR   Diagnostics storage root
   DEVICE_SERVER_RUN_DIR    PID and log directory
   DEVICE_SERVER_PID_FILE   PID file path
   DEVICE_SERVER_LOG_FILE   Log file path
   DEVICE_SERVER_MAX_EVENT_BYTES
   DEVICE_SERVER_MAX_BLOB_BYTES
-  TOKEN_SERVER_*           Legacy aliases still accepted
+  TOKEN_SERVER_HOST/PORT/TTL_SECONDS/PUBLIC_HOST/TOKEN_SERVER_ENV_FILE
+                        Legacy aliases still accepted
 EOF
 }
 
@@ -119,11 +110,11 @@ print_endpoints() {
     echo "log: ${LOG_FILE}"
     echo "data: ${DATA_DIR}"
     echo "health: http://${DISPLAY_HOST}:${PORT}/healthz"
-    echo "token legacy: http://${DISPLAY_HOST}:${PORT}${TOKEN_PATH}"
-    echo "token auth:   http://${DISPLAY_HOST}:${PORT}${AUTH_PATH}"
-    echo "diag events:  http://${DISPLAY_HOST}:${PORT}${EVENT_PATH}"
-    echo "diag blobs:   http://${DISPLAY_HOST}:${PORT}${BLOB_PATH}"
-    echo "admin:        http://${DISPLAY_HOST}:${PORT}${ADMIN_PATH}"
+    echo "token legacy: http://${DISPLAY_HOST}:${PORT}/token"
+    echo "token auth:   http://${DISPLAY_HOST}:${PORT}/v1/auth/token"
+    echo "diag events:  http://${DISPLAY_HOST}:${PORT}/v1/diagnostics/events"
+    echo "diag blobs:   http://${DISPLAY_HOST}:${PORT}/v1/diagnostics/blobs"
+    echo "admin:        http://${DISPLAY_HOST}:${PORT}/v1/admin/storage"
 }
 
 start_server() {
@@ -151,11 +142,6 @@ start_server() {
     PYTHONUNBUFFERED=1 nohup "${PYTHON_BIN}" "${SERVER_SCRIPT}" \
         --host "${HOST}" \
         --port "${PORT}" \
-        --path "${TOKEN_PATH}" \
-        --auth-path "${AUTH_PATH}" \
-        --event-path "${EVENT_PATH}" \
-        --blob-path "${BLOB_PATH}" \
-        --admin-path "${ADMIN_PATH}" \
         --env-file "${ENV_FILE}" \
         --ttl-seconds "${TTL_SECONDS}" \
         --data-dir "${DATA_DIR}" \
