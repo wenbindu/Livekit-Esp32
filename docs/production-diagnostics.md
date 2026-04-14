@@ -8,12 +8,15 @@ The firmware now includes a minimal persistent diagnostics baseline for
 Implemented behavior:
 
 - capture `esp_reset_reason()` on every boot
+- enable `coredump` to flash in ELF format
 - persist `boot_count`
 - persist `session_id`
 - persist `reboot_streak` for consecutive unstable boots
 - persist the latest lifecycle breadcrumb
 - persist a short detail string for the latest failure or reset context
+- flush runtime diagnostics to NVS from a dedicated internal-memory task
 - emit a startup summary log line after NVS initialization
+- emit a coredump summary log line when a valid flash coredump is present
 
 Implementation files:
 
@@ -36,6 +39,14 @@ Keys currently tracked:
 - `session_id`
 - `breadcrumb`
 - `detail`
+
+Runtime updates are coalesced and persisted by a dedicated diagnostics flush
+task so token-fetch and LiveKit callback paths do not write flash directly from
+PSRAM-backed task stacks.
+
+The partition table now includes:
+
+- `coredump` at `0x810000`, size `128KB`
 
 ## Breadcrumbs
 
@@ -92,11 +103,16 @@ This is the first useful line to check when diagnosing:
 - reconnect loops after reboot
 - crashes before room join
 
+If a valid flash coredump exists, the firmware also logs a line similar to:
+
+```text
+diag_coredump present=1 size=... task=... exc_pc=... panic_reason=...
+```
+
 ## What This Does Not Yet Cover
 
 This baseline does not yet include:
 
-- coredump to flash
 - deferred diagnostics upload to the server
 - log ring buffer export
 - server-side diagnostics ingest APIs

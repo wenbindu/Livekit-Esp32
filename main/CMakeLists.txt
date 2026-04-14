@@ -21,6 +21,7 @@ idf_component_register(
         esp_event
         esp_http_client
         esp_http_server
+        espcoredump
         esp_lcd
         esp_netif
         esp_timer
