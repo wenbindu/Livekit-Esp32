@@ -21,7 +21,7 @@ English | [简体中文](README.zh-CN.md)
 - `docs/`: development and packaging notes
 - `scripts/project.sh`: configure/build/flash wrapper
 - `scripts/package_firmware.sh`: package the firmware represented by the current lifecycle branch
-- `scripts/token_server.py`: local or remote token service
+- `scripts/token_server.py`: local or remote device server with token and diagnostics APIs
 - `scripts/debug_uplink_ws_server.py`: desktop receiver for debug-audio WAV capture
 
 ## Open-Source Safety
@@ -188,6 +188,11 @@ Run it in the background with PID/log management:
 ```bash
 bash scripts/token_server_ctl.sh start
 ```
+
+The same script now also exposes first-pass device-server endpoints for
+diagnostics event and blob ingest. See:
+
+- `docs/device-server.md`
 
 Use separate files for device and server:
 

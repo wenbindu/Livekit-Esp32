@@ -21,7 +21,7 @@
 - `docs/`：调试、打包、模式说明文档
 - `scripts/project.sh`：配置、编译、烧录、串口监控入口
 - `scripts/package_firmware.sh`：按当前 git branch 打包固件
-- `scripts/token_server.py`：本地或远端 token server
+- `scripts/token_server.py`：本地或远端 device server，兼容 token 签发并支持诊断接口
 - `scripts/debug_uplink_ws_server.py`：开发阶段接收调试音频并保存为 WAV
 
 ## 开源安全说明
@@ -186,6 +186,10 @@ python3 scripts/token_server.py --env-file configs/token_server.local.env
 ```bash
 bash scripts/token_server_ctl.sh start
 ```
+
+同一个脚本现在也提供了第一版 device server 诊断接口，文档见：
+
+- `docs/device-server.md`
 
 建议把设备和服务端配置拆开：
 

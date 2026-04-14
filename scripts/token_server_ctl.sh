@@ -14,6 +14,13 @@ TOKEN_PATH="${TOKEN_SERVER_HTTP_PATH:-/token}"
 TTL_SECONDS="${TOKEN_SERVER_TTL_SECONDS:-3600}"
 ENV_FILE="${TOKEN_SERVER_ENV_FILE:-${PROJECT_DIR}/configs/token_server.local.env}"
 DISPLAY_HOST="${TOKEN_SERVER_PUBLIC_HOST:-${HOST}}"
+AUTH_PATH="${DEVICE_SERVER_AUTH_PATH:-/v1/auth/token}"
+EVENT_PATH="${DEVICE_SERVER_EVENT_PATH:-/v1/diagnostics/events}"
+BLOB_PATH="${DEVICE_SERVER_BLOB_PATH:-/v1/diagnostics/blobs}"
+ADMIN_PATH="${DEVICE_SERVER_ADMIN_PATH:-/v1/admin/storage}"
+DATA_DIR="${DEVICE_SERVER_DATA_DIR:-${PROJECT_DIR}/.run/device_server}"
+MAX_EVENT_BYTES="${DEVICE_SERVER_MAX_EVENT_BYTES:-65536}"
+MAX_BLOB_BYTES="${DEVICE_SERVER_MAX_BLOB_BYTES:-1048576}"
 
 usage() {
     cat <<'EOF'
@@ -27,10 +34,17 @@ Usage:
 Environment:
   TOKEN_SERVER_HOST        Bind host, default: 0.0.0.0
   TOKEN_SERVER_PORT        Bind port, default: 8790
-  TOKEN_SERVER_HTTP_PATH   Token path, default: /token
+  TOKEN_SERVER_HTTP_PATH   Legacy token path, default: /token
   TOKEN_SERVER_TTL_SECONDS JWT TTL, default: 3600
   TOKEN_SERVER_ENV_FILE    Env file, default: configs/token_server.local.env
   TOKEN_SERVER_PUBLIC_HOST Optional display host for printed URLs
+  DEVICE_SERVER_AUTH_PATH  Auth API path, default: /v1/auth/token
+  DEVICE_SERVER_EVENT_PATH Diagnostics event ingest path
+  DEVICE_SERVER_BLOB_PATH  Diagnostics blob ingest path
+  DEVICE_SERVER_ADMIN_PATH Admin summary path
+  DEVICE_SERVER_DATA_DIR   Diagnostics storage root
+  DEVICE_SERVER_MAX_EVENT_BYTES
+  DEVICE_SERVER_MAX_BLOB_BYTES
 EOF
 }
 
@@ -96,8 +110,13 @@ print_endpoints() {
     echo "bind: ${HOST}:${PORT}"
     echo "env: ${ENV_FILE}"
     echo "log: ${LOG_FILE}"
+    echo "data: ${DATA_DIR}"
     echo "health: http://${DISPLAY_HOST}:${PORT}/healthz"
-    echo "token: http://${DISPLAY_HOST}:${PORT}${TOKEN_PATH}"
+    echo "token legacy: http://${DISPLAY_HOST}:${PORT}${TOKEN_PATH}"
+    echo "token auth:   http://${DISPLAY_HOST}:${PORT}${AUTH_PATH}"
+    echo "diag events:  http://${DISPLAY_HOST}:${PORT}${EVENT_PATH}"
+    echo "diag blobs:   http://${DISPLAY_HOST}:${PORT}${BLOB_PATH}"
+    echo "admin:        http://${DISPLAY_HOST}:${PORT}${ADMIN_PATH}"
 }
 
 start_server() {
@@ -126,8 +145,15 @@ start_server() {
         --host "${HOST}" \
         --port "${PORT}" \
         --path "${TOKEN_PATH}" \
+        --auth-path "${AUTH_PATH}" \
+        --event-path "${EVENT_PATH}" \
+        --blob-path "${BLOB_PATH}" \
+        --admin-path "${ADMIN_PATH}" \
         --env-file "${ENV_FILE}" \
         --ttl-seconds "${TTL_SECONDS}" \
+        --data-dir "${DATA_DIR}" \
+        --max-event-bytes "${MAX_EVENT_BYTES}" \
+        --max-blob-bytes "${MAX_BLOB_BYTES}" \
         >"${LOG_FILE}" 2>&1 &
 
     local server_pid="$!"

@@ -58,7 +58,15 @@ LIVEKIT_AGENT_NAME=my-agent
 
 Both real files stay gitignored.
 
-## Token Server
+## Device Server
+
+The token server script now serves as the first `device server` baseline:
+
+- legacy token path remains `POST /token`
+- new auth path is `POST /v1/auth/token`
+- diagnostics event ingest is `POST /v1/diagnostics/events`
+- diagnostics blob ingest is `POST /v1/diagnostics/blobs`
+- admin summary is `GET /v1/admin/storage`
 
 Run the token server on a reachable machine or server:
 
@@ -78,6 +86,10 @@ Health check:
 ```bash
 curl http://YOUR_SERVER_IP:8790/healthz
 ```
+
+Detailed API contract:
+
+- `docs/device-server.md`
 
 ## Device Behavior
 
@@ -135,4 +147,5 @@ bash scripts/package_firmware.sh
 - `docs/profiles.md`
 - `docs/firmware-packaging.md`
 - `docs/firmware-lifecycle-design.md`
+- `docs/device-server.md`
 - `docs/production-diagnostics.md`

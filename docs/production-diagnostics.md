@@ -115,6 +115,14 @@ This baseline does not yet include:
 
 - deferred diagnostics upload to the server
 - log ring buffer export
-- server-side diagnostics ingest APIs
+
+The first server-side ingest baseline now exists in `scripts/token_server.py`
+as a device-server shape:
+
+- `POST /v1/diagnostics/events`
+- `POST /v1/diagnostics/blobs`
+- `GET /v1/admin/storage`
+
+Firmware-side deferred upload is still the next step.
 
 Those are the next production-hardening steps.
