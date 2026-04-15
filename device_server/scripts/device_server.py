@@ -66,6 +66,7 @@ def load_env_file(path: str) -> None:
     if not env_path.exists():
         return
 
+    parsed_env: dict[str, str] = {}
     for raw_line in env_path.read_text(encoding="utf-8").splitlines():
         line = raw_line.strip()
         if not line or line.startswith("#") or "=" not in line:
@@ -73,6 +74,9 @@ def load_env_file(path: str) -> None:
         key, value = line.split("=", 1)
         key = key.strip()
         value = value.strip().strip('"').strip("'")
+        parsed_env[key] = value
+
+    for key, value in parsed_env.items():
         os.environ.setdefault(key, value)
 
 

@@ -1,5 +1,7 @@
 # Edit User, Group, WorkingDirectory, EnvironmentFile, ExecStart, and
 # ReadWritePaths to match your server path before installing.
+# Keep the workspace under /opt or /srv. Do not point this unit at /root or
+# /home while ProtectHome=true is enabled.
 
 [Unit]
 Description=LiveKit ESP32-S3 Device Server

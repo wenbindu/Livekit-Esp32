@@ -65,7 +65,9 @@ Runtime files are written under:
 1. Edit `device_server/systemd/livekit-device-server.service`.
 2. Update `User`, `Group`, `WorkingDirectory`, `EnvironmentFile`,
    `ExecStart`, and `ReadWritePaths`.
-3. Install it:
+3. Keep the workspace under `/opt` or `/srv`. Do not point the unit at
+   `/root/...` while `ProtectHome=true` is enabled.
+4. Install it:
 
 ```bash
 sudo cp device_server/systemd/livekit-device-server.service \
