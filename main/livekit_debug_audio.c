@@ -1,3 +1,4 @@
+#include "app_downlink_capture.h"
 #include "livekit_debug_audio.h"
 
 #include <inttypes.h>
@@ -35,7 +36,9 @@
 #include "freertos/ringbuf.h"
 #endif
 
+#if CONFIG_LK_EXAMPLE_DEBUG_UPLINK_WAV || CONFIG_LK_EXAMPLE_DEBUG_UPLINK_WS || CONFIG_LK_EXAMPLE_DEBUG_DOWNLINK_WS
 static const char *TAG = "lk_debug_audio";
+#endif
 
 #define DEBUG_AUDIO_SAMPLE_RATE 16000
 #define DEBUG_AUDIO_CHANNELS 1
@@ -926,6 +929,7 @@ esp_err_t livekit_debug_audio_start_recording(void)
 int livekit_debug_audio_on_downlink_pcm(uint8_t *data, int size, void *ctx)
 {
     (void)ctx;
+    app_downlink_capture_on_pcm((const uint8_t *)data, size > 0 ? (size_t)size : 0U);
 #if CONFIG_LK_EXAMPLE_DEBUG_DOWNLINK_WS
     if (!s_debug_audio.initialized || s_debug_audio.downlink.ringbuf == NULL || data == NULL || size <= 0) {
         return 0;
@@ -954,6 +958,7 @@ esp_err_t livekit_debug_audio_start_recording(void)
 
 int livekit_debug_audio_on_downlink_pcm(uint8_t *data, int size, void *ctx)
 {
+    app_downlink_capture_on_pcm((const uint8_t *)data, size > 0 ? (size_t)size : 0U);
     (void)data;
     (void)size;
     (void)ctx;

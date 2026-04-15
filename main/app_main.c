@@ -3,7 +3,9 @@
 #include <sys/time.h>
 #include <time.h>
 
+#include "app_downlink_capture.h"
 #include "app_diagnostics.h"
+#include "app_diagnostics_upload.h"
 #include "driver/gpio.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -255,6 +257,7 @@ static void app_task(void *arg)
     }
 
     app_diagnostics_note_stage("wifi_connected");
+    app_diagnostics_upload_boot_event_async();
 
 #if CONFIG_LK_EXAMPLE_START_IN_STANDBY
     wait_for_chat_button_press();
@@ -271,6 +274,11 @@ static void app_task(void *arg)
     esp_err_t debug_audio_err = livekit_debug_audio_init();
     if (debug_audio_err != ESP_OK) {
         ESP_LOGW(TAG, "Debug uplink recorder disabled: %s", esp_err_to_name(debug_audio_err));
+    }
+
+    esp_err_t downlink_capture_err = app_downlink_capture_init();
+    if (downlink_capture_err != ESP_OK) {
+        ESP_LOGW(TAG, "Downlink capture upload disabled: %s", esp_err_to_name(downlink_capture_err));
     }
 
 #if CONFIG_LK_EXAMPLE_LOCAL_AUDIO_UPLINK_ONLY

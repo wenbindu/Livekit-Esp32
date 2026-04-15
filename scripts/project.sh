@@ -63,8 +63,12 @@ Config env keys:
   LIVEKIT_AGENT_METADATA={...}
   ENABLE_DEBUG_UPLINK_WS=0|1
   ENABLE_DEBUG_DOWNLINK_WS=0|1
+  ENABLE_DEBUG_DOWNLINK_HTTP_UPLOAD=0|1
   DEBUG_UPLINK_WS_URL=ws://host:8765/uplink
   DEBUG_DOWNLINK_WS_URL=ws://host:8765/downlink
+  DEBUG_DOWNLINK_HTTP_RINGBUF_KB=32
+  DEBUG_DOWNLINK_HTTP_IDLE_FLUSH_MS=1500
+  DEBUG_DOWNLINK_HTTP_SEGMENT_SECONDS=20
   DEBUG_UPLINK_WS_RECONNECT_MS=3000
   LOCAL_AUDIO_UPLINK_ONLY=0|1
   ENABLE_DEBUG_UPLINK_WAV=0|1
@@ -412,6 +416,7 @@ refresh_generated_defaults() {
     local room="${LIVEKIT_ROOM:-lichuang-room}"
     local uplink_ws_enabled="${ENABLE_DEBUG_UPLINK_WS:-0}"
     local downlink_ws_enabled="${ENABLE_DEBUG_DOWNLINK_WS:-0}"
+    local downlink_http_enabled="${ENABLE_DEBUG_DOWNLINK_HTTP_UPLOAD:-0}"
     local wav_enabled="${ENABLE_DEBUG_UPLINK_WAV:-0}"
 
     if [[ ("${uplink_ws_enabled}" == "1" || "${downlink_ws_enabled}" == "1") && "${wav_enabled}" == "1" ]]; then
@@ -530,6 +535,15 @@ refresh_generated_defaults() {
         printf '# CONFIG_LK_EXAMPLE_DEBUG_UPLINK_WS is not set\n' >> "${generated_path}"
         printf '# CONFIG_LK_EXAMPLE_DEBUG_DOWNLINK_WS is not set\n' >> "${generated_path}"
         printf '# CONFIG_LK_EXAMPLE_LOCAL_AUDIO_UPLINK_ONLY is not set\n' >> "${generated_path}"
+    fi
+
+    if [[ "${downlink_http_enabled}" == "1" ]]; then
+        printf 'CONFIG_LK_EXAMPLE_DEBUG_DOWNLINK_HTTP_UPLOAD=y\n' >> "${generated_path}"
+        printf 'CONFIG_LK_EXAMPLE_DEBUG_DOWNLINK_HTTP_RINGBUF_KB=%s\n' "${DEBUG_DOWNLINK_HTTP_RINGBUF_KB:-32}" >> "${generated_path}"
+        printf 'CONFIG_LK_EXAMPLE_DEBUG_DOWNLINK_HTTP_IDLE_FLUSH_MS=%s\n' "${DEBUG_DOWNLINK_HTTP_IDLE_FLUSH_MS:-1500}" >> "${generated_path}"
+        printf 'CONFIG_LK_EXAMPLE_DEBUG_DOWNLINK_HTTP_SEGMENT_SECONDS=%s\n' "${DEBUG_DOWNLINK_HTTP_SEGMENT_SECONDS:-20}" >> "${generated_path}"
+    else
+        printf '# CONFIG_LK_EXAMPLE_DEBUG_DOWNLINK_HTTP_UPLOAD is not set\n' >> "${generated_path}"
     fi
 
     if [[ "${START_IN_STANDBY:-0}" == "1" ]]; then

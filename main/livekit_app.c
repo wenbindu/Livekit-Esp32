@@ -2421,6 +2421,11 @@ static void on_room_info(const livekit_room_info_t *info, void *ctx)
         strlcpy(s_runtime.room_sid, info->sid, sizeof(s_runtime.room_sid));
         s_runtime.agent_dispatch_scheduled = false;
         s_runtime.agent_dispatch_requested = false;
+        if (s_room_handle != NULL &&
+            livekit_room_get_state(s_room_handle) == LIVEKIT_CONNECTION_STATE_CONNECTED) {
+            ESP_LOGI(TAG, "Room sid became available after connect; scheduling agent dispatch");
+            schedule_agent_dispatch_if_needed();
+        }
     }
 
     ESP_LOGI(TAG,

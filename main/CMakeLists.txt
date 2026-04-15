@@ -1,7 +1,9 @@
 idf_component_register(
     SRCS
         "app_main.c"
+        "app_downlink_capture.c"
         "app_diagnostics.c"
+        "app_diagnostics_upload.c"
         "lichuang_audio_board.c"
         "lichuang_ui.cc"
         "livekit_app.c"

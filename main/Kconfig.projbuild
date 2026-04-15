@@ -310,6 +310,28 @@ config LK_EXAMPLE_DEBUG_DOWNLINK_RINGBUF_KB
     range 8 128
     default 24
 
+config LK_EXAMPLE_DEBUG_DOWNLINK_HTTP_UPLOAD
+    bool "Upload rendered downlink audio segments to device server over HTTP"
+    default n
+
+config LK_EXAMPLE_DEBUG_DOWNLINK_HTTP_RINGBUF_KB
+    int "HTTP downlink capture ring buffer size (KiB)"
+    depends on LK_EXAMPLE_DEBUG_DOWNLINK_HTTP_UPLOAD
+    range 8 128
+    default 32
+
+config LK_EXAMPLE_DEBUG_DOWNLINK_HTTP_IDLE_FLUSH_MS
+    int "HTTP downlink idle flush timeout (ms)"
+    depends on LK_EXAMPLE_DEBUG_DOWNLINK_HTTP_UPLOAD
+    range 200 10000
+    default 1500
+
+config LK_EXAMPLE_DEBUG_DOWNLINK_HTTP_SEGMENT_SECONDS
+    int "HTTP downlink max segment duration (seconds)"
+    depends on LK_EXAMPLE_DEBUG_DOWNLINK_HTTP_UPLOAD
+    range 3 30
+    default 20
+
 config LK_EXAMPLE_DEBUG_UPLINK_WS_RECONNECT_MS
     int "Debug uplink WebSocket reconnect delay (ms)"
     depends on LK_EXAMPLE_DEBUG_UPLINK_WS || LK_EXAMPLE_DEBUG_DOWNLINK_WS

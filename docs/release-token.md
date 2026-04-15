@@ -7,6 +7,7 @@
 It keeps the LiveKit API secret on the server side only:
 
 - the device server signs JWTs
+- the device server also ensures agent dispatch when an agent is configured
 - the device fetches a short-lived token
 - the device joins LiveKit with that token
 - if the token is rejected or expired, the device fetches a fresh token and retries
@@ -107,7 +108,8 @@ Detailed API contract:
 4. User presses `BOOT`
 5. Device syncs clock and initializes audio
 6. Device requests a token from the device server
-7. Device joins the LiveKit room
+7. Device server ensures LiveKit agent dispatch for the configured agent
+8. Device joins the LiveKit room
 
 If the board looks idle right after boot, that is expected for `main`: it will
 not try to join a room until `BOOT` is pressed.

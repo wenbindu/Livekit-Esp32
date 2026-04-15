@@ -30,6 +30,17 @@ in `docs/firmware-lifecycle-design.md`:
 - admin storage summary: `GET /v1/admin/storage`
 - health: `GET /healthz`
 
+Current firmware baseline:
+
+- room auth still uses `POST /token`
+- when `agent_name` is present, token issuance also ensures a LiveKit agent dispatch
+  for that room on the server side
+- diagnostics upload now sends one deferred `boot_summary` event to
+  `POST /v1/diagnostics/events` after Wi-Fi is connected
+- debug firmware can upload rendered downlink WAV segments as
+  `kind=downlink_audio` to `POST /v1/diagnostics/blobs`
+- firmware does not yet upload coredump blobs
+
 ## Why This Shape
 
 The service is meant to evolve with production firmware:
@@ -45,6 +56,12 @@ Compatible endpoints:
 
 - `POST /token`
 - `POST /v1/auth/token`
+
+Behavior:
+
+- issue participant join token
+- if `agent_name` is present, create or reuse the corresponding agent dispatch
+- if agent dispatch fails, return an error instead of silently issuing a token
 
 Request body:
 
@@ -150,6 +167,13 @@ Storage:
 
 - blob files under `device_server/.run/device_server/blobs/YYYYMMDD/<device>/`
 - sidecar metadata JSON next to each blob file
+
+Current firmware/debug uses:
+
+- `kind=downlink_audio`
+- `Content-Type: audio/wav`
+- filenames like `downlink_s43_b43_seg001.wav`
+- capture point: rendered PCM before speaker playback
 
 Each stored blob records:
 

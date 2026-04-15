@@ -17,11 +17,14 @@ Implemented behavior:
 - flush runtime diagnostics to NVS from a dedicated internal-memory task
 - emit a startup summary log line after NVS initialization
 - emit a coredump summary log line when a valid flash coredump is present
+- upload one deferred `boot_summary` event to `device_server` after Wi-Fi is connected
 
 Implementation files:
 
 - `main/app_diagnostics.c`
 - `main/app_diagnostics.h`
+- `main/app_diagnostics_upload.c`
+- `main/app_diagnostics_upload.h`
 - `main/app_main.c`
 - `main/livekit_app.c`
 
@@ -109,12 +112,33 @@ If a valid flash coredump exists, the firmware also logs a line similar to:
 diag_coredump present=1 size=... task=... exc_pc=... panic_reason=...
 ```
 
+## Device Server Upload
+
+The firmware now derives a diagnostics endpoint from the configured token
+server URL and posts a compact boot event to:
+
+- `POST /v1/diagnostics/events`
+
+Current behavior:
+
+- upload is scheduled once per boot
+- upload starts after `wifi_connected`
+- upload reuses the same host configured by `TOKEN_SERVER_URL`
+- the current payload is a single `boot_summary` event with boot counters,
+  reset reason, previous breadcrumb/detail, current breadcrumb/detail, and
+  coredump summary fields
+
+This gives the server enough context to diagnose reboot loops and unstable
+room-join sequences even when the serial log is unavailable.
+
 ## What This Does Not Yet Cover
 
 This baseline does not yet include:
 
-- deferred diagnostics upload to the server
 - log ring buffer export
+- incremental lifecycle event uploads after boot
+- coredump/blob upload to the server
+- backoff, retry queueing, and offline replay for failed uploads
 
 The first server-side ingest baseline now exists in
 `device_server/scripts/device_server.py` as a device-server shape:
@@ -122,7 +146,5 @@ The first server-side ingest baseline now exists in
 - `POST /v1/diagnostics/events`
 - `POST /v1/diagnostics/blobs`
 - `GET /v1/admin/storage`
-
-Firmware-side deferred upload is still the next step.
 
 Those are the next production-hardening steps.

@@ -9,6 +9,12 @@ Use this workflow when you need to inspect both sides of device audio:
 
 This is a development-time diagnostic path. It is no longer a long-lived branch.
 
+There are now two downlink capture paths:
+
+- `audio-trace`: export uplink/downlink PCM over local WebSocket to a workstation
+- `downlink-http`: stage rendered downlink WAV segments on the device and upload
+  them to `device_server` over HTTP
+
 ## Recommended Debug Firmware
 
 Use the `dev` branch with the `audio-trace` preset:
@@ -32,6 +38,14 @@ git switch dev
 FIRMWARE_PRESET=uplink-trace bash scripts/project.sh flash-monitor
 ```
 
+If you want downlink audio to land directly on the deployed `device_server`,
+use:
+
+```bash
+git switch dev
+FIRMWARE_PRESET=downlink-http bash scripts/project.sh flash-monitor
+```
+
 ## What Gets Captured
 
 ### Uplink
@@ -52,6 +66,13 @@ FIRMWARE_PRESET=uplink-trace bash scripts/project.sh flash-monitor
 - source: rendered AI audio before speaker playback
 - position in pipeline: PCM headed into the render/playback path
 
+That means:
+
+- if the saved downlink WAV already contains crackle, the issue is upstream of
+  the speaker path
+- if the saved downlink WAV is clean but the speaker sounds bad, the issue is
+  in render FIFO, I2S, codec, gain, or board-side playback
+
 ## Config Layers
 
 Branch-owned defaults:
@@ -61,16 +82,18 @@ Branch-owned defaults:
 Diagnostic preset:
 
 - `configs/presets/audio-trace.env`
+- `configs/presets/downlink-http.env`
 
 Local endpoints:
 
 - `configs/livekit.local.env`
 
-The preset enables:
+Preset behavior:
 
-- `ENABLE_DEBUG_UPLINK_WS=1`
-- `ENABLE_DEBUG_DOWNLINK_WS=1`
-- normal chat flow remains enabled
+- `audio-trace`: `ENABLE_DEBUG_UPLINK_WS=1`, `ENABLE_DEBUG_DOWNLINK_WS=1`
+- `uplink-trace`: `ENABLE_DEBUG_UPLINK_WS=1`
+- `downlink-http`: `ENABLE_DEBUG_DOWNLINK_HTTP_UPLOAD=1`
+- normal chat flow remains enabled in all three presets
 
 ## Local Config
 
@@ -78,15 +101,23 @@ Set your Mac or workstation LAN IP in:
 
 - `configs/livekit.local.env`
 
-Required keys:
+Required keys for `audio-trace`:
 
 ```env
 DEBUG_UPLINK_WS_URL=ws://YOUR_MAC_IP:8765/uplink
 DEBUG_DOWNLINK_WS_URL=ws://YOUR_MAC_IP:8765/downlink
 ```
 
-If the board changes Wi-Fi networks, update these URLs to the new reachable
-host IP before reflashing.
+Optional keys for `downlink-http`:
+
+```env
+DEBUG_DOWNLINK_HTTP_RINGBUF_KB=32
+DEBUG_DOWNLINK_HTTP_IDLE_FLUSH_MS=1500
+DEBUG_DOWNLINK_HTTP_SEGMENT_SECONDS=20
+```
+
+If the board changes Wi-Fi networks and you use `audio-trace`, update these
+URLs to the new reachable host IP before reflashing.
 
 ## Start The Receiver
 
@@ -130,6 +161,23 @@ python3 scripts/debug_uplink_ws_server.py \
 5. Speak to the device for 20 to 30 seconds.
 6. Trigger an AI response long enough to exercise playback.
 7. Inspect the newest same-timestamp `uplink_*.wav` and `downlink_*.wav`.
+
+## HTTP Upload Workflow
+
+Use this when the board cannot reach a workstation WebSocket receiver reliably
+but can reach `device_server`.
+
+1. Confirm `TOKEN_SERVER_URL` points at the deployed `device_server`.
+2. Flash with `FIRMWARE_PRESET=downlink-http`.
+3. Trigger an AI response long enough to reproduce the playback crackle.
+4. Wait about `DEBUG_DOWNLINK_HTTP_IDLE_FLUSH_MS` after playback stops.
+5. Inspect `device_server/.run/device_server/blobs/YYYYMMDD/<device>/`.
+
+Each uploaded blob is:
+
+- kind: `downlink_audio`
+- file type: `.wav`
+- capture point: rendered PCM before speaker playback
 
 ## Merge Rule
 

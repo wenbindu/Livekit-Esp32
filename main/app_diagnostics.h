@@ -28,6 +28,7 @@ typedef struct {
 
 void app_diagnostics_init(void);
 const app_diagnostics_snapshot_t *app_diagnostics_snapshot(void);
+void app_diagnostics_copy_snapshot(app_diagnostics_snapshot_t *out_snapshot);
 void app_diagnostics_log_boot_summary(void);
 void app_diagnostics_note_stage(const char *breadcrumb);
 void app_diagnostics_note_failure(const char *breadcrumb, const char *detail);

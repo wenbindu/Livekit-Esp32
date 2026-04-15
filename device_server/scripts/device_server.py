@@ -15,7 +15,9 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
+from urllib.error import HTTPError, URLError
 from urllib.parse import parse_qs, urlsplit
+from urllib.request import Request, urlopen
 
 
 DEFAULT_LEGACY_TOKEN_PATH = "/token"
@@ -26,6 +28,7 @@ DEFAULT_ADMIN_PATH = "/v1/admin/storage"
 DEFAULT_DATA_DIR = ".run/device_server"
 DEFAULT_MAX_EVENT_BYTES = 64 * 1024
 DEFAULT_MAX_BLOB_BYTES = 1024 * 1024
+DEFAULT_AGENT_DISPATCH_TIMEOUT_SECONDS = 5
 
 
 class RequestError(Exception):
@@ -184,6 +187,91 @@ def build_access_token(request: dict[str, Any], ttl_seconds: int) -> dict[str, A
         "room_name": room_name,
         "participant_identity": participant_identity,
     }
+
+
+def build_room_admin_token(room_name: str, ttl_seconds: int = 300) -> str:
+    api_key = os.environ.get("LIVEKIT_API_KEY", "")
+    api_secret = os.environ.get("LIVEKIT_API_SECRET", "")
+    if not api_key or not api_secret:
+        raise RuntimeError("LIVEKIT_API_KEY and LIVEKIT_API_SECRET are required")
+
+    now = int(time.time())
+    payload = {
+        "iss": api_key,
+        "sub": f"device-server-dispatch-{room_name}",
+        "nbf": now,
+        "exp": now + ttl_seconds,
+        "name": "device-server-dispatch",
+        "video": {
+            "roomAdmin": True,
+            "room": room_name,
+        },
+    }
+    return sign_jwt(api_key, api_secret, payload)
+
+
+def build_agent_dispatch_url(server_url: str) -> str:
+    if not server_url:
+        raise RuntimeError("LIVEKIT_URL is required")
+
+    if server_url.startswith("wss://"):
+        base_url = "https://" + server_url[len("wss://") :]
+    elif server_url.startswith("ws://"):
+        base_url = "http://" + server_url[len("ws://") :]
+    elif server_url.startswith("https://") or server_url.startswith("http://"):
+        base_url = server_url
+    else:
+        raise RuntimeError(f"unsupported LIVEKIT_URL scheme: {server_url}")
+
+    return base_url.rstrip("/") + "/twirp/livekit.AgentDispatchService/CreateDispatch"
+
+
+def ensure_agent_dispatch(room_name: str, agent_name: str, agent_metadata: str | None = None) -> dict[str, Any]:
+    server_url = os.environ.get("LIVEKIT_URL", "")
+    dispatch_url = build_agent_dispatch_url(server_url)
+    admin_token = build_room_admin_token(room_name)
+    payload: dict[str, Any] = {
+        "room": room_name,
+        "agent_name": agent_name,
+    }
+    if agent_metadata:
+        payload["metadata"] = agent_metadata
+
+    request_body = compact_json(payload).encode("utf-8")
+    request = Request(
+        dispatch_url,
+        data=request_body,
+        headers={
+            "Authorization": f"Bearer {admin_token}",
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        },
+        method="POST",
+    )
+
+    try:
+        with urlopen(request, timeout=DEFAULT_AGENT_DISPATCH_TIMEOUT_SECONDS) as response:
+            response_body = response.read().decode("utf-8", errors="replace")
+            return {
+                "ok": True,
+                "status": response.status,
+                "body": response_body,
+            }
+    except HTTPError as exc:
+        response_body = exc.read().decode("utf-8", errors="replace")
+        already_exists = exc.code == 409 or "\"code\":\"already_exists\"" in response_body
+        return {
+            "ok": already_exists,
+            "status": exc.code,
+            "body": response_body,
+            "already_exists": already_exists,
+        }
+    except URLError as exc:
+        return {
+            "ok": False,
+            "status": None,
+            "body": str(exc),
+        }
 
 
 def sanitize_segment(value: str | None, fallback: str) -> str:
@@ -377,6 +465,31 @@ class DeviceHandler(BaseHTTPRequestHandler):
             response = build_access_token(request, self._config().ttl_seconds)
         except RuntimeError as exc:
             raise RequestError(HTTPStatus.INTERNAL_SERVER_ERROR, "token_build_failed", str(exc)) from exc
+
+        agent_name = request.get("agent_name") or os.environ.get("LIVEKIT_AGENT_NAME")
+        agent_metadata = request.get("agent_metadata") or os.environ.get("LIVEKIT_AGENT_METADATA")
+        if agent_name:
+            dispatch_result = ensure_agent_dispatch(response["room_name"], agent_name, agent_metadata)
+            if dispatch_result.get("ok"):
+                if dispatch_result.get("already_exists"):
+                    print(
+                        "[device] agent dispatch already exists"
+                        f" room={response['room_name']}"
+                        f" agent={agent_name}"
+                        f" body={dispatch_result.get('body', '')}"
+                    )
+                else:
+                    print(
+                        "[device] agent dispatch ensured"
+                        f" room={response['room_name']}"
+                        f" agent={agent_name}"
+                        f" status={dispatch_result.get('status')}"
+                    )
+            else:
+                detail = (
+                    f"status={dispatch_result.get('status')} body={dispatch_result.get('body', '')}"
+                )
+                raise RequestError(HTTPStatus.BAD_GATEWAY, "agent_dispatch_failed", detail)
 
         print(
             "[device] auth issued"

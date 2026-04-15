@@ -23,6 +23,7 @@ Firmware behavior comes from:
 
 - `uplink-trace`: processed uplink audio export over WebSocket
 - `audio-trace`: uplink + downlink audio export over WebSocket
+- `downlink-http`: rendered downlink audio uploaded to device_server as WAV blobs
 
 ## Commands
 

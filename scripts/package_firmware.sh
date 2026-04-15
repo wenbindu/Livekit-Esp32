@@ -184,6 +184,7 @@ participant=${LIVEKIT_PARTICIPANT:-}
 agent_name=${LIVEKIT_AGENT_NAME:-}
 debug_uplink_ws=${ENABLE_DEBUG_UPLINK_WS:-0}
 debug_downlink_ws=${ENABLE_DEBUG_DOWNLINK_WS:-0}
+debug_downlink_http_upload=${ENABLE_DEBUG_DOWNLINK_HTTP_UPLOAD:-0}
 debug_uplink_wav=${ENABLE_DEBUG_UPLINK_WAV:-0}
 local_audio_uplink_only=${LOCAL_AUDIO_UPLINK_ONLY:-0}
 start_in_standby=${START_IN_STANDBY:-0}

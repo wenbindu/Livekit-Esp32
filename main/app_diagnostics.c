@@ -368,6 +368,21 @@ const app_diagnostics_snapshot_t *app_diagnostics_snapshot(void)
     return &s_diag.snapshot;
 }
 
+void app_diagnostics_copy_snapshot(app_diagnostics_snapshot_t *out_snapshot)
+{
+    if (out_snapshot == NULL) {
+        return;
+    }
+
+    if (!diag_lock(portMAX_DELAY)) {
+        memset(out_snapshot, 0, sizeof(*out_snapshot));
+        return;
+    }
+
+    memcpy(out_snapshot, &s_diag.snapshot, sizeof(*out_snapshot));
+    diag_unlock();
+}
+
 void app_diagnostics_log_boot_summary(void)
 {
     const app_diagnostics_snapshot_t *snapshot = &s_diag.snapshot;
