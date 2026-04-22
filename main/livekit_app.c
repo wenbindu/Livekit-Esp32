@@ -984,12 +984,14 @@ static void log_dns_entry(esp_netif_t *netif, esp_netif_dns_type_t type)
         return;
     }
 
+#if CONFIG_LWIP_IPV6
     if (dns.ip.type == ESP_IPADDR_TYPE_V6) {
         ESP_LOGI(TAG, "DNS[%s]: " IPV6STR,
             dns_type_str(type),
             IPV62STR(dns.ip.u_addr.ip6));
         return;
     }
+#endif
 
     ESP_LOGI(TAG, "DNS[%s]: type=%u", dns_type_str(type), dns.ip.type);
 }
@@ -1079,7 +1081,12 @@ static bool derive_turn_host(const char *server_host, char *turn_host, size_t tu
 static void log_host_resolution(const char *label, const char *host)
 {
     struct addrinfo hints = {
-        .ai_family = AF_UNSPEC,
+        .ai_family =
+#if CONFIG_LWIP_IPV6
+            AF_UNSPEC,
+#else
+            AF_INET,
+#endif
         .ai_socktype = SOCK_STREAM,
     };
     struct addrinfo *result = NULL;
@@ -1091,15 +1098,20 @@ static void log_host_resolution(const char *label, const char *host)
     }
 
     bool found = false;
-    int index = 0;
     for (const struct addrinfo *it = result; it != NULL; it = it->ai_next) {
+#if CONFIG_LWIP_IPV6
         char ip_text[INET6_ADDRSTRLEN] = {0};
+#else
+        char ip_text[INET_ADDRSTRLEN] = {0};
+#endif
         const void *addr = NULL;
 
         if (it->ai_family == AF_INET) {
             addr = &((const struct sockaddr_in *)it->ai_addr)->sin_addr;
+#if CONFIG_LWIP_IPV6
         } else if (it->ai_family == AF_INET6) {
             addr = &((const struct sockaddr_in6 *)it->ai_addr)->sin6_addr;
+#endif
         } else {
             continue;
         }
@@ -1114,7 +1126,6 @@ static void log_host_resolution(const char *label, const char *host)
         } else {
             ESP_LOGI(TAG, "Resolve[%s] host=%s -> %s", label, host, ip_text);
         }
-        index++;
     }
 
     if (!found) {

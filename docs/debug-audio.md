@@ -17,7 +17,12 @@ There are now two downlink capture paths:
 
 ## Recommended Debug Firmware
 
-Use the `dev` branch with the `audio-trace` preset:
+Use the `dev` branch with the preset that matches the problem:
+
+- `audio-trace` when you need simultaneous uplink and downlink PCM on a workstation
+- `downlink-http` when you mainly need rendered downlink WAV artifacts on `device_server`
+
+WebSocket bidirectional trace example:
 
 ```bash
 git switch dev
@@ -111,9 +116,9 @@ DEBUG_DOWNLINK_WS_URL=ws://YOUR_MAC_IP:8765/downlink
 Optional keys for `downlink-http`:
 
 ```env
-DEBUG_DOWNLINK_HTTP_RINGBUF_KB=32
-DEBUG_DOWNLINK_HTTP_IDLE_FLUSH_MS=1500
-DEBUG_DOWNLINK_HTTP_SEGMENT_SECONDS=20
+DEBUG_DOWNLINK_HTTP_RINGBUF_KB=24
+DEBUG_DOWNLINK_HTTP_IDLE_FLUSH_MS=1000
+DEBUG_DOWNLINK_HTTP_SEGMENT_SECONDS=8
 ```
 
 If the board changes Wi-Fi networks and you use `audio-trace`, update these

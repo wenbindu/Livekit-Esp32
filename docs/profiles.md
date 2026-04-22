@@ -31,6 +31,7 @@ Recommended presets when investigating audio issues:
 
 - `uplink-trace`
 - `audio-trace`
+- `downlink-http`
 
 ## Test Branch
 

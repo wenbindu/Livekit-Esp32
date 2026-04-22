@@ -15,6 +15,7 @@ Diagnostic presets are loaded only when needed:
 
 - `uplink-trace`
 - `audio-trace`
+- `downlink-http`
 
 ## How It Works
 
@@ -38,6 +39,12 @@ Build and flash with a temporary diagnostic preset:
 
 ```bash
 FIRMWARE_PRESET=audio-trace bash scripts/project.sh flash-monitor
+```
+
+For downlink crackle capture without a workstation WebSocket receiver:
+
+```bash
+FIRMWARE_PRESET=downlink-http bash scripts/project.sh flash-monitor
 ```
 
 Package the current lifecycle branch:

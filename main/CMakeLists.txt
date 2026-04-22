@@ -4,6 +4,7 @@ idf_component_register(
         "app_downlink_capture.c"
         "app_diagnostics.c"
         "app_diagnostics_upload.c"
+        "ipv6_compat_stubs.c"
         "lichuang_audio_board.c"
         "lichuang_ui.cc"
         "livekit_app.c"
@@ -43,3 +44,11 @@ idf_component_register(
 )
 
 target_compile_definitions(${COMPONENT_LIB} PUBLIC LV_LVGL_H_INCLUDE_SIMPLE)
+
+if(NOT CONFIG_LWIP_IPV6)
+    target_link_libraries(${COMPONENT_LIB} INTERFACE
+        "-u esp_netif_get_all_ip6"
+        "-u esp_netif_ip6_get_addr_type"
+        "-u in6addr_any"
+    )
+endif()

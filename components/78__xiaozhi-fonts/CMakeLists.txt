@@ -1,6 +1,10 @@
 file(GLOB SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c)
 file(GLOB EMOJI_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/emoji/*.c)
 
+if(NOT CONFIG_LV_USE_IMGFONT)
+    list(FILTER SOURCES EXCLUDE REGEX "/font_emoji_(32|64)\\.c$")
+endif()
+
 idf_component_register(
     SRCS
         ${SOURCES}

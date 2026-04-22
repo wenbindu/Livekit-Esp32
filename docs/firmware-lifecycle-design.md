@@ -5,7 +5,8 @@
 Replace the old long-lived firmware-variant branch model with:
 
 - lifecycle branches: `dev`, `test`, `main`
-- diagnostic presets: temporary overlays such as `uplink-trace` and `audio-trace`
+- diagnostic presets: temporary overlays such as `uplink-trace`,
+  `audio-trace`, and `downlink-http`
 
 This keeps business logic moving through a normal promotion path while keeping
 debug tooling available when needed.
@@ -43,6 +44,8 @@ Diagnostic presets are optional overlays loaded after the branch defaults:
 - `audio-trace`
   Export both processed uplink audio and rendered downlink audio over
   WebSocket.
+- `downlink-http`
+  Upload rendered downlink WAV segments to `device_server` over HTTP.
 
 Presets are not long-lived product branches. They are temporary diagnostics.
 
@@ -84,7 +87,7 @@ All functional work follows:
 When debugging with audio trace:
 
 1. start from `dev`
-2. enable a preset such as `audio-trace`
+2. enable a preset such as `audio-trace` or `downlink-http`
 3. make small diagnostic commits separately from functional fixes
 4. merge functional fixes back to `dev`
 5. keep diagnostic-only changes only if they are reusable and default-off

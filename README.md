@@ -153,6 +153,7 @@ instead:
 
 - `uplink-trace`: export processed uplink audio
 - `audio-trace`: export both uplink and downlink audio
+- `downlink-http`: upload rendered downlink audio to `device_server`
 
 See:
 
